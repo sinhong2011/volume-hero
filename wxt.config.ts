@@ -1,12 +1,14 @@
+import { paraglide } from "@inlang/paraglide-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  modules: ["@wxt-dev/module-solid", "@wxt-dev/i18n/module"],
+  modules: ["@wxt-dev/module-solid"],
   manifest: {
     name: "Volume Hero",
-    description: "Boost audio/video volume beyond 100% (up to 600%) with per-site memory",
+    description:
+      "Boost audio/video volume beyond 100% (up to 600%) with per-site memory",
     default_locale: "en",
     permissions: ["storage", "activeTab", "tabs"],
     commands: {
@@ -41,6 +43,12 @@ export default defineConfig({
     },
   },
   vite: () => ({
-    plugins: [tailwindcss()],
+    plugins: [
+      tailwindcss(),
+      paraglide({
+        project: "./project.inlang",
+        outdir: "./src/paraglide",
+      }),
+    ],
   }),
 });

@@ -1,24 +1,35 @@
-import * as i18n from "@solid-primitives/i18n";
-import { type Accessor, createMemo, createSignal, onMount } from "solid-js";
-import { getGlobalSettings, saveGlobalSettings } from "@/utils/storage";
+import { type Accessor, createSignal, onMount } from "solid-js";
+import * as m from "@/src/paraglide/messages";
 import {
-  SUPPORTED_LOCALES,
-  type SupportedLocale,
-  type TranslationKey,
-  translations,
-} from "./translations";
+  type AvailableLanguageTag,
+  availableLanguageTags,
+  isAvailableLanguageTag,
+  languageTag,
+  setLanguageTag,
+} from "@/src/paraglide/runtime";
+import { getGlobalSettings, saveGlobalSettings } from "@/utils/storage";
+
+// Re-export types for compatibility
+export type SupportedLocale = AvailableLanguageTag;
+
+// Locale display names
+export const SUPPORTED_LOCALES: { code: AvailableLanguageTag; name: string }[] =
+  [
+    { code: "en", name: "English" },
+    { code: "zh-CN", name: "简体中文" },
+    { code: "zh-TW", name: "繁體中文" },
+    { code: "ja", name: "日本語" },
+    { code: "ko", name: "한국어" },
+  ];
 
 // Global reactive state for language
-const [currentLocale, setCurrentLocale] = createSignal<SupportedLocale>("en");
+const [currentLocale, setCurrentLocale] = createSignal<AvailableLanguageTag>(
+  languageTag()
+);
 let initialized = false;
 
-// Flattened dictionaries for each locale (computed once)
-const flattenedDicts = Object.fromEntries(
-  Object.entries(translations).map(([locale, dict]) => [
-    locale,
-    i18n.flatten(dict),
-  ])
-) as Record<SupportedLocale, i18n.Flatten<typeof translations.en>>;
+// Set Paraglide to use a getter function that returns our reactive signal
+setLanguageTag(() => currentLocale());
 
 /**
  * Initialize the i18n system by loading saved language preference
@@ -28,8 +39,8 @@ export async function initI18n(): Promise<void> {
 
   try {
     const settings = await getGlobalSettings();
-    const locale = settings.language as SupportedLocale;
-    if (locale && translations[locale]) {
+    const locale = settings.language;
+    if (locale && isAvailableLanguageTag(locale)) {
       setCurrentLocale(locale);
     }
     initialized = true;
@@ -42,8 +53,10 @@ export async function initI18n(): Promise<void> {
 /**
  * Change the current language and save to storage
  */
-export async function changeLanguage(locale: SupportedLocale): Promise<void> {
-  if (!translations[locale]) {
+export async function changeLanguage(
+  locale: AvailableLanguageTag
+): Promise<void> {
+  if (!availableLanguageTags.includes(locale)) {
     console.warn(`[VolumeHero] Unsupported locale: ${locale}`);
     return;
   }
@@ -55,15 +68,19 @@ export async function changeLanguage(locale: SupportedLocale): Promise<void> {
 /**
  * Get the current locale (accessor)
  */
-export function getLocale(): SupportedLocale {
+export function getLocale(): AvailableLanguageTag {
   return currentLocale();
 }
 
-export type TranslatorFn = (key: TranslationKey) => string;
+// Message key type - all exported message function names from Paraglide
+export type MessageKey = keyof typeof m;
+
+// Messages type - the type of the messages object
+export type Messages = typeof m;
 
 /**
- * SolidJS hook for i18n using @solid-primitives/i18n
- * Returns a reactive t() function that updates when language changes
+ * SolidJS hook for i18n using Paraglide JS
+ * Returns the messages object and locale management functions
  */
 export function useI18n() {
   // Initialize on first use (non-blocking)
@@ -74,17 +91,12 @@ export function useI18n() {
     });
   });
 
-  // Create a reactive memo that returns the current flattened dictionary
-  const dict = createMemo(() => flattenedDicts[currentLocale()]);
-
-  // Create the translator using solid-primitives/i18n
-  const t = i18n.translator(dict);
-
   return {
-    t: t as TranslatorFn,
-    locale: currentLocale as Accessor<SupportedLocale>,
+    m,
+    locale: currentLocale as Accessor<AvailableLanguageTag>,
     setLocale: changeLanguage,
   };
 }
 
-export { type TranslationKey, type SupportedLocale, SUPPORTED_LOCALES };
+// Export messages for direct import
+export { m };
