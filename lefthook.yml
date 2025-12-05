@@ -1,0 +1,28 @@
+# Lefthook Git Hooks Configuration
+# https://github.com/evilmartians/lefthook
+
+# Pre-commit hooks - Run before each commit
+pre-commit:
+  parallel: true
+  commands:
+    biome-check:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc}"
+      run: bunx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    biome-format:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: bunx biome format --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+# Commit-msg hooks - Validate commit message format
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit {1}
+
+# Pre-push hooks - Run before pushing to remote
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: bun run compile

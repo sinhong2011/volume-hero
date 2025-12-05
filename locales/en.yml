@@ -1,0 +1,40 @@
+# English translations
+extName: Volume Hero
+extDescription: Control and manage audio/video volume on any website
+
+# Common
+ok: OK
+cancel: Cancel
+save: Save
+reset: Reset
+close: Close
+
+# Popup
+popup:
+  title: Volume Hero
+  noMedia: No media found on this page
+  volume: Volume
+  mute: Mute
+  unmute: Unmute
+  maxVolume: Max volume (600%)
+  resetTo100: Reset to 100%
+  autoApply: Auto-apply on page load
+  currentSite: Current site
+  noActiveTab: No active tab
+  playingMedia: Playing Media
+  refresh: Refresh
+  active: Active
+  jumpToTab: Jump to tab
+  noPlayingMedia: No playing media detected in any tabs
+  openWebsite: Open a website to adjust volume
+  distortionWarning: High volume may cause audio distortion
+
+# Settings
+settings:
+  title: Settings
+  language: Language
+  languageDescription: Select your preferred language
+  languages:
+    en: English
+    zh_CN: Simplified Chinese
+    zh_TW: Traditional Chinese

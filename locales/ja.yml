@@ -1,0 +1,43 @@
+# 日本語翻訳
+extName: Volume Hero
+extDescription: あらゆるウェブサイトの音声・動画の音量を調整・管理
+
+# 共通
+ok: OK
+cancel: キャンセル
+save: 保存
+reset: リセット
+close: 閉じる
+
+# ポップアップ
+popup:
+  title: Volume Hero
+  noMedia: このページにメディアが見つかりません
+  volume: 音量
+  mute: ミュート
+  unmute: ミュート解除
+  maxVolume: 最大音量 (600%)
+  resetTo100: 100%にリセット
+  autoApply: ページ読み込み時に自動適用
+  currentSite: 現在のサイト
+  noActiveTab: アクティブなタブがありません
+  playingMedia: 再生中のメディア
+  refresh: 更新
+  active: アクティブ
+  jumpToTab: タブに移動
+  noPlayingMedia: 再生中のメディアが検出されませんでした
+  openWebsite: ウェブサイトを開いて音量を調整
+  distortionWarning: 音量を上げすぎると音が歪む可能性があります
+
+# 設定
+settings:
+  title: 設定
+  language: 言語
+  languageDescription: お好みの言語を選択してください
+  languages:
+    en: English (英語)
+    zh_CN: 简体中文 (簡体字中国語)
+    zh_TW: 繁體中文 (繁体字中国語)
+    ja: 日本語
+    ko: 한국어 (韓国語)
+
