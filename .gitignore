@@ -6,21 +6,49 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+bun-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 .output
+dist
+build
 stats.html
 stats-*.json
+
+# WXT
 .wxt
 web-ext.config.ts
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Testing
+coverage
+*.lcov
+
+# Misc
+*.local
+*.tsbuildinfo

@@ -1,9 +1,10 @@
-import { CircleCheck, Globe, Info, Languages, Settings } from "lucide-solid";
-import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { Globe, Info, Languages, Settings } from "lucide-solid";
+import { createSignal, For, Match, Switch } from "solid-js";
+import toast from "solid-toast";
 import {
+  type Messages,
   SUPPORTED_LOCALES,
   type SupportedLocale,
-  type TranslatorFn,
   useI18n,
 } from "@/utils/i18n";
 import DomainManager from "./DomainManager";
@@ -11,20 +12,17 @@ import DomainManager from "./DomainManager";
 type TabId = "general" | "domains" | "about";
 
 export default function Options() {
-  const { t, locale, setLocale } = useI18n();
+  const { m, locale, setLocale } = useI18n();
   const [activeTab, setActiveTab] = createSignal<TabId>("general");
 
   const tabs: {
     id: TabId;
-    labelKey:
-      | "settings.tabs.general"
-      | "settings.tabs.domains"
-      | "settings.tabs.about";
+    label: () => string;
     icon: typeof Settings;
   }[] = [
-    { id: "general", labelKey: "settings.tabs.general", icon: Settings },
-    { id: "domains", labelKey: "settings.tabs.domains", icon: Globe },
-    { id: "about", labelKey: "settings.tabs.about", icon: Info },
+    { id: "general", label: () => m.settings_tabs_general(), icon: Settings },
+    { id: "domains", label: () => m.settings_tabs_domains(), icon: Globe },
+    { id: "about", label: () => m.settings_tabs_about(), icon: Info },
   ];
 
   return (
@@ -34,8 +32,8 @@ export default function Options() {
         <div class="flex items-center gap-3 mb-4">
           <span class="text-2xl">🔊</span>
           <div>
-            <h1 class="text-lg font-bold">{t("extName")}</h1>
-            <p class="text-base-content/60 text-xs">{t("settings.title")}</p>
+            <h1 class="text-lg font-bold">{m.ext_name()}</h1>
+            <p class="text-base-content/60 text-xs">{m.settings_title()}</p>
           </div>
         </div>
 
@@ -51,7 +49,7 @@ export default function Options() {
               onClick={() => setActiveTab(tab.id)}
             >
               <tab.icon class="h-4 w-4" />
-              {t(tab.labelKey)}
+              {tab.label()}
             </button>
           )}
         </For>
@@ -68,17 +66,17 @@ export default function Options() {
         >
           <Switch>
             <Match when={activeTab() === "general"}>
-              <GeneralSettings t={t} locale={locale} setLocale={setLocale} />
+              <GeneralSettings m={m} locale={locale} setLocale={setLocale} />
             </Match>
             <Match when={activeTab() === "domains"}>
               <div class="space-y-4">
                 <div>
                   <h2 class="text-lg font-semibold flex items-center gap-2">
                     <Globe class="h-5 w-5" />
-                    {t("domains.title")}
+                    {m.domains_title()}
                   </h2>
                   <p class="text-sm text-base-content/70 mt-1">
-                    {t("domains.description")}
+                    {m.domains_description()}
                   </p>
                 </div>
                 <DomainManager />
@@ -88,13 +86,13 @@ export default function Options() {
               <div class="space-y-4">
                 <h2 class="text-lg font-semibold flex items-center gap-2">
                   <Info class="h-5 w-5" />
-                  {t("settings.about")}
+                  {m.settings_about()}
                 </h2>
                 <p class="text-base-content/70">
-                  {t("settings.aboutDescription")}
+                  {m.settings_about_description()}
                 </p>
                 <div class="text-sm text-base-content/50">
-                  {t("settings.version")} 1.0.0
+                  {m.settings_version()} 1.0.0
                 </div>
               </div>
             </Match>
@@ -106,24 +104,22 @@ export default function Options() {
 }
 
 interface GeneralSettingsProps {
-  t: TranslatorFn;
+  m: Messages;
   locale: () => SupportedLocale;
   setLocale: (locale: SupportedLocale) => Promise<void>;
 }
 
 function GeneralSettings(props: GeneralSettingsProps) {
   const [isSaving, setIsSaving] = createSignal(false);
-  const [saveSuccess, setSaveSuccess] = createSignal(false);
 
   const handleLanguageChange = async (newLanguage: string) => {
     setIsSaving(true);
-    setSaveSuccess(false);
     try {
       await props.setLocale(newLanguage as SupportedLocale);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
+      toast.success(props.m.settings_saved_description());
     } catch (error) {
       console.error("[VolumeHero] Failed to save language setting:", error);
+      toast.error("Failed to save language setting");
     } finally {
       setIsSaving(false);
     }
@@ -136,9 +132,9 @@ function GeneralSettings(props: GeneralSettingsProps) {
         <div class="flex items-center gap-3">
           <Languages class="h-5 w-5 text-base-content/70" />
           <div>
-            <h3 class="font-medium">{props.t("settings.language")}</h3>
+            <h3 class="font-medium">{props.m.settings_language()}</h3>
             <p class="text-sm text-base-content/60">
-              {props.t("settings.languageDescription")}
+              {props.m.settings_language_description()}
             </p>
           </div>
         </div>
@@ -153,14 +149,6 @@ function GeneralSettings(props: GeneralSettingsProps) {
           </For>
         </select>
       </div>
-
-      {/* Save Status */}
-      <Show when={saveSuccess()}>
-        <div class="alert alert-success py-2">
-          <CircleCheck class="stroke-current shrink-0 h-4 w-4" />
-          <span class="text-sm">{props.t("settings.savedDescription")}</span>
-        </div>
-      </Show>
     </div>
   );
 }

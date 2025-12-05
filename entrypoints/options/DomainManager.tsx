@@ -1,6 +1,7 @@
 import { Globe, Search, Trash2 } from "lucide-solid";
 import { createSignal, For, onMount, Show } from "solid-js";
-import { type TranslatorFn, useI18n } from "@/utils/i18n";
+import toast from "solid-toast";
+import { type Messages, useI18n } from "@/utils/i18n";
 import {
   getAllDomainSettings,
   removeDomainSettings,
@@ -9,14 +10,10 @@ import {
 } from "@/utils/storage";
 
 export default function DomainManager() {
-  const { t } = useI18n();
+  const { m } = useI18n();
   const [domains, setDomains] = createSignal<StoredDomainEntry[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
   const [searchQuery, setSearchQuery] = createSignal("");
-  const [notification, setNotification] = createSignal<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   // Load all domain settings on mount
   onMount(async () => {
@@ -35,20 +32,15 @@ export default function DomainManager() {
     }
   }
 
-  function showNotification(type: "success" | "error", message: string) {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 2000);
-  }
-
   async function handleDeleteDomain(domain: string) {
-    if (!confirm(t("domains.deleteConfirm"))) return;
+    if (!confirm(m.domains_delete_confirm())) return;
     try {
       await removeDomainSettings(domain);
       setDomains((prev) => prev.filter((d) => d.domain !== domain));
-      showNotification("success", t("domains.deleted"));
+      toast.success(m.domains_deleted());
     } catch (error) {
       console.error("[VolumeHero] Failed to delete domain:", error);
-      showNotification("error", "Failed to delete");
+      toast.error("Failed to delete");
     }
   }
 
@@ -69,10 +61,10 @@ export default function DomainManager() {
             : d
         )
       );
-      showNotification("success", t("domains.updated"));
+      toast.success(m.domains_updated());
     } catch (error) {
       console.error("[VolumeHero] Failed to update auto-apply:", error);
-      showNotification("error", "Failed to update");
+      toast.error("Failed to update");
     }
   }
 
@@ -92,24 +84,12 @@ export default function DomainManager() {
 
   return (
     <div class="space-y-4">
-      {/* Notification */}
-      <Show when={notification()}>
-        <div
-          class={cn(
-            "alert py-2",
-            notification()?.type === "success" ? "alert-success" : "alert-error"
-          )}
-        >
-          <span class="text-sm">{notification()?.message}</span>
-        </div>
-      </Show>
-
       {/* Search Bar */}
       <label class="input input-bordered flex items-center gap-2 bg-base-300/50 focus-within:border-primary focus-within:outline-none">
         <Search class="h-4 w-4 text-base-content/50" />
         <input
           type="text"
-          placeholder={t("domains.search")}
+          placeholder={m.domains_search()}
           class="grow bg-transparent border-none outline-none placeholder:text-base-content/40"
           value={searchQuery()}
           onInput={(e) => setSearchQuery(e.target.value)}
@@ -136,7 +116,7 @@ export default function DomainManager() {
       <Show when={!isLoading() && domains().length === 0}>
         <div class="text-center py-8 text-base-content/60">
           <Globe class="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>{t("domains.noDomains")}</p>
+          <p>{m.domains_no_domains()}</p>
         </div>
       </Show>
 
@@ -152,7 +132,7 @@ export default function DomainManager() {
                   handleAutoApplyChange(entry.domain, val)
                 }
                 formatDate={formatDate}
-                t={t}
+                m={m}
               />
             )}
           </For>
@@ -179,7 +159,7 @@ interface DomainCardProps {
   onDelete: () => void;
   onAutoApplyChange: (autoApply: boolean) => void;
   formatDate: (timestamp: number) => string;
-  t: TranslatorFn;
+  m: Messages;
 }
 
 function DomainCard(props: DomainCardProps) {
@@ -196,7 +176,7 @@ function DomainCard(props: DomainCardProps) {
             type="button"
             class="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
             onClick={props.onDelete}
-            title={props.t("delete")}
+            title={props.m.delete_text()}
           >
             <Trash2 class="h-4 w-4" />
           </button>
@@ -212,11 +192,11 @@ function DomainCard(props: DomainCardProps) {
               onChange={(e) => props.onAutoApplyChange(e.target.checked)}
             />
             <span class="label-text text-xs">
-              {props.t("domains.autoApply")}
+              {props.m.domains_auto_apply()}
             </span>
           </label>
           <span class="text-xs text-base-content/50">
-            {props.t("domains.lastApplied")}:{" "}
+            {props.m.domains_last_applied()}:{" "}
             {props.formatDate(props.entry.settings.lastApplied)}
           </span>
         </div>

@@ -4,6 +4,7 @@
  */
 
 import { createSignal, onCleanup, onMount } from "solid-js";
+import toast from "solid-toast";
 import {
   DEFAULT_SETTINGS,
   type DomainSettings,
@@ -13,13 +14,10 @@ import {
 } from "@/utils/storage";
 import type { MediaInfo, TabMediaInfo } from "@/utils/volume";
 
-export type SaveStatus = "idle" | "saving" | "saved" | "error";
-
 export interface VolumeControlState {
   domain: () => string;
   volume: () => number;
   autoApply: () => boolean;
-  saveStatus: () => SaveStatus;
   isLoading: () => boolean;
   mediaInfo: () => MediaInfo[];
   tabsWithMedia: () => TabMediaInfo[];
@@ -48,7 +46,6 @@ export function useVolumeControl(): VolumeControlState {
   const [autoApply, setAutoApplySignal] = createSignal<boolean>(
     DEFAULT_SETTINGS.autoApply
   );
-  const [saveStatus, setSaveStatus] = createSignal<SaveStatus>("idle");
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [mediaInfo, setMediaInfo] = createSignal<MediaInfo[]>([]);
   const [tabsWithMedia, setTabsWithMedia] = createSignal<TabMediaInfo[]>([]);
@@ -266,19 +263,12 @@ export function useVolumeControl(): VolumeControlState {
     const currentDomain = domain();
     if (!currentDomain) return;
 
-    setSaveStatus("saving");
-
     try {
       await saveDomainSettings(currentDomain, settings);
-      setSaveStatus("saved");
-
-      // Reset status after delay
-      setTimeout(() => {
-        setSaveStatus("idle");
-      }, 2000);
+      // Silent save - no toast for routine volume changes to avoid spam
     } catch (error) {
       console.error("[VolumeHero] Failed to save settings:", error);
-      setSaveStatus("error");
+      toast.error("Failed to save settings");
     }
   }
 
@@ -342,7 +332,6 @@ export function useVolumeControl(): VolumeControlState {
     domain,
     volume,
     autoApply,
-    saveStatus,
     isLoading,
     mediaInfo,
     tabsWithMedia,

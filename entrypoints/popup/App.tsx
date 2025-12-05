@@ -1,13 +1,14 @@
 import {
   ExternalLink,
   Globe,
+  Info,
   RefreshCw,
   Settings,
   TriangleAlert,
   Volume2,
   VolumeX,
 } from "lucide-solid";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import { useVolumeControl } from "@/hooks/useVolumeControl";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/utils/i18n";
@@ -121,13 +122,12 @@ function VolumeIndicator(props: { volume: number }) {
 }
 
 function App() {
-  const { t } = useI18n();
+  const { m } = useI18n();
 
   const {
     domain,
     volume,
     autoApply,
-    saveStatus,
     isLoading,
     tabsWithMedia,
     tabVolumes,
@@ -144,6 +144,48 @@ function App() {
   };
 
   const volumePercentage = () => Math.round(volume() * 100);
+
+  // Keyboard shortcut handler for arrow keys
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Only handle when domain is present (volume controls are available)
+    if (!domain()) return;
+
+    const step = e.shiftKey ? 0.5 : 0.1; // 50% with Shift, 10% without
+
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        setVolume(Math.min(6, volume() + step));
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        setVolume(Math.max(0, volume() - step));
+        break;
+      case "r":
+      case "R":
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          resetVolume();
+        }
+        break;
+      case "m":
+      case "M":
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setVolume(volume() === 0 ? 1.0 : 0);
+        }
+        break;
+    }
+  };
+
+  // Set up keyboard event listeners
+  onMount(() => {
+    document.addEventListener("keydown", handleKeyDown);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("keydown", handleKeyDown);
+  });
 
   const handleSliderChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
@@ -191,25 +233,118 @@ function App() {
       <div class="card-body p-4">
         {/* Header */}
         <div class="flex items-center justify-between">
-          <h2 class="card-title text-lg">🔊 {t("popup.title")}</h2>
+          <h2 class="card-title text-lg">🔊 {m.popup_title()}</h2>
           <div class="flex items-center gap-1">
-            <Show when={saveStatus() === "saving"}>
-              <span class="badge badge-info badge-sm">{t("save")}...</span>
-            </Show>
-            <Show when={saveStatus() === "saved"}>
-              <span class="badge badge-success badge-sm">
-                {t("settings.saved")}
-              </span>
-            </Show>
-            <Show when={saveStatus() === "error"}>
-              <span class="badge badge-error badge-sm">Error</span>
+            {/* Keyboard Shortcuts Tooltip */}
+            <Show when={domain()}>
+              <div class="dropdown dropdown-end dropdown-hover">
+                <button
+                  type="button"
+                  tabIndex={0}
+                  class="btn btn-ghost btn-sm btn-square"
+                >
+                  <Info class="h-5 w-5 opacity-60" />
+                </button>
+                <div class="dropdown-content z-50 bg-base-300 rounded-lg shadow-lg p-3 w-64 right-0">
+                  <div class="text-xs">
+                    <p class="font-semibold text-base-content pb-1 mb-2 border-b border-base-content/20">
+                      {m.popup_shortcuts_popup()}
+                    </p>
+                    <table class="w-full">
+                      <tbody>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">↑</kbd>{" "}
+                            <kbd class="kbd kbd-xs">↓</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_arrow_keys()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">Shift</kbd>+
+                            <kbd class="kbd kbd-xs">↑↓</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_shift_arrow_keys()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">M</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_mute()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">R</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_reset()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p class="font-semibold text-base-content pt-2 pb-1 mb-2 border-b border-base-content/20">
+                      {m.popup_shortcuts_global()}
+                    </p>
+                    <table class="w-full">
+                      <tbody>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">Alt</kbd>+
+                            <kbd class="kbd kbd-xs">Shift</kbd>+
+                            <kbd class="kbd kbd-xs">↑</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_global_up()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">Alt</kbd>+
+                            <kbd class="kbd kbd-xs">Shift</kbd>+
+                            <kbd class="kbd kbd-xs">↓</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_global_down()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">Alt</kbd>+
+                            <kbd class="kbd kbd-xs">Shift</kbd>+
+                            <kbd class="kbd kbd-xs">R</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_global_reset()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="py-0.5 pr-3 whitespace-nowrap">
+                            <kbd class="kbd kbd-xs">Alt</kbd>+
+                            <kbd class="kbd kbd-xs">Shift</kbd>+
+                            <kbd class="kbd kbd-xs">M</kbd>
+                          </td>
+                          <td class="py-0.5 text-base-content/70 text-right">
+                            {m.popup_shortcuts_global_mute()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </Show>
             {/* Settings Button */}
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-square"
               onClick={openOptionsPage}
-              title={t("settings.title")}
+              title={m.settings_title()}
             >
               <Settings class="h-5 w-5" />
             </button>
@@ -223,7 +358,7 @@ function App() {
             <div class="relative rounded-lg p-3 mb-2 overflow-hidden">
               <VolumeIndicator volume={volume()} />
               <div class="relative z-10 flex justify-between items-center">
-                <span class="text-sm font-medium">{t("popup.volume")}</span>
+                <span class="text-sm font-medium">{m.popup_volume()}</span>
                 <span
                   class={cn(
                     "text-2xl font-bold tabular-nums transition-colors duration-300",
@@ -242,7 +377,7 @@ function App() {
                 type="button"
                 class="btn btn-ghost btn-sm btn-square"
                 onClick={() => setVolume(0)}
-                title={t("popup.mute")}
+                title={m.popup_mute()}
               >
                 <VolumeX class="h-5 w-5" />
               </button>
@@ -265,7 +400,7 @@ function App() {
                 type="button"
                 class="btn btn-ghost btn-sm btn-square"
                 onClick={() => setVolume(6)}
-                title={t("popup.maxVolume")}
+                title={m.popup_max_volume()}
               >
                 <Volume2 class="h-5 w-5" />
               </button>
@@ -281,7 +416,7 @@ function App() {
             <Show when={showDistortionWarning()}>
               <div class="alert alert-warning py-2 px-3 mt-2">
                 <TriangleAlert class="stroke-current shrink-0 h-4 w-4" />
-                <span class="text-xs">{t("popup.distortionWarning")}</span>
+                <span class="text-xs">{m.popup_distortion_warning()}</span>
               </div>
             </Show>
           </div>
@@ -295,7 +430,7 @@ function App() {
                 checked={autoApply()}
                 onChange={(e) => setAutoApply(e.target.checked)}
               />
-              <span class="label-text text-sm">{t("popup.autoApply")}</span>
+              <span class="label-text text-sm">{m.popup_auto_apply()}</span>
             </label>
           </div>
 
@@ -303,22 +438,22 @@ function App() {
           <div class="card-actions mt-4">
             <button
               type="button"
-              class="btn btn-outline btn-sm w-full rounded-lg transition-all duration-200"
+              class="btn btn-sm btn-soft w-full rounded-lg transition-all duration-200 bg-base-600"
               onClick={resetVolume}
               disabled={volume() === 1.0}
             >
-              {t("popup.resetTo100")}
+              {m.popup_reset_to_100()}
             </button>
           </div>
 
           {/* Playing Tabs Section */}
           <div class="divider my-2 text-xs text-base-content/50">
-            <span>{t("popup.playingMedia")}</span>
+            <span>{m.popup_playing_media()}</span>
             <button
               type="button"
               class="btn btn-ghost btn-xs"
               onClick={refreshAllTabsMedia}
-              title={t("popup.refresh")}
+              title={m.popup_refresh()}
             >
               <RefreshCw class="h-3 w-3" />
             </button>
@@ -353,7 +488,7 @@ function App() {
                       </span>
                       <Show when={tab.isActive}>
                         <span class="badge badge-xs badge-primary">
-                          {t("popup.active")}
+                          {m.popup_active()}
                         </span>
                       </Show>
                     </div>
@@ -368,7 +503,7 @@ function App() {
                           if (tab.isActive) setVolume(0);
                           setTabVolume(tab.tabId, 0);
                         }}
-                        title={t("popup.mute")}
+                        title={m.popup_mute()}
                       >
                         <VolumeX class="h-4 w-4" />
                       </button>
@@ -401,7 +536,7 @@ function App() {
                           if (tab.isActive) setVolume(6);
                           setTabVolume(tab.tabId, 6);
                         }}
-                        title={t("popup.maxVolume")}
+                        title={m.popup_max_volume()}
                       >
                         <Volume2 class="h-4 w-4" />
                       </button>
@@ -411,7 +546,7 @@ function App() {
                         type="button"
                         class="btn btn-ghost btn-xs btn-square"
                         onClick={() => focusTab(tab.tabId)}
-                        title={t("popup.jumpToTab")}
+                        title={m.popup_jump_to_tab()}
                       >
                         <ExternalLink class="h-4 w-4" />
                       </button>
@@ -425,7 +560,7 @@ function App() {
           {/* No Media State */}
           <Show when={tabsWithMedia().length === 0}>
             <div class="text-center text-xs text-base-content/50 py-2">
-              {t("popup.noPlayingMedia")}
+              {m.popup_no_playing_media()}
             </div>
           </Show>
         </Show>
@@ -434,7 +569,7 @@ function App() {
         <Show when={!isLoading() && !domain()}>
           <div class="alert alert-warning mt-4">
             <TriangleAlert class="stroke-current shrink-0 h-5 w-5" />
-            <span class="text-xs">{t("popup.openWebsite")}</span>
+            <span class="text-xs">{m.popup_open_website()}</span>
           </div>
         </Show>
       </div>
