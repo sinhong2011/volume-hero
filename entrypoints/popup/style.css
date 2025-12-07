@@ -1,10 +1,33 @@
 @import "tailwindcss";
-@plugin "daisyui" {
-  themes: dracula;
+
+/* macOS Sonoma-inspired Design System for Popup */
+@theme {
+  --color-macos-bg: #1c1c1e;
+  --color-macos-card: #2c2c2e;
+  --color-macos-card-hover: #3a3a3c;
+  --color-macos-divider: #38383a;
+  --color-macos-text: #ffffff;
+  --color-macos-text-secondary: #8e8e93;
+  --color-macos-text-tertiary: #636366;
+  --color-macos-accent: #0a84ff;
+  --color-macos-accent-hover: #409cff;
+  --color-macos-success: #30d158;
+  --color-macos-warning: #ff9f0a;
+  --color-macos-error: #ff453a;
+  --color-macos-toggle-off: #39393d;
+  --color-macos-input: #1c1c1e;
+  --color-macos-input-border: #3d3d3f;
+  --radius-macos-sm: 6px;
+  --radius-macos-md: 10px;
+  --radius-macos-lg: 12px;
+  --shadow-macos: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-macos-lg: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --font-macos: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, system-ui, sans-serif;
+  --font-macos-mono: "SF Mono", Monaco, Consolas, monospace;
 }
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-macos);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -12,22 +35,184 @@
   -webkit-text-size-adjust: 100%;
 }
 
+html {
+  @apply bg-macos-bg;
+}
+
 body {
-  margin: 0;
-  min-width: 320px;
-  background: transparent;
-  position: relative;
+  @apply m-0 min-w-[320px] bg-macos-bg relative;
 }
 
 /* Ensure popup has proper dimensions */
 #root {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  position: relative;
+  @apply flex justify-center items-start relative bg-macos-bg;
 }
 
 /* Solid Toast container positioning for popup */
 [data-solid-toast] {
   z-index: 9999 !important;
+}
+
+/* ============================================
+   Popup Card Styles
+   ============================================ */
+.popup-card {
+  @apply bg-macos-bg w-80 rounded-macos-lg shadow-macos-lg;
+}
+
+.popup-card-body {
+  @apply p-4;
+}
+
+.popup-card-title {
+  @apply text-lg font-semibold text-macos-text;
+}
+
+/* ============================================
+   Button Styles
+   ============================================ */
+.popup-btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-macos-sm text-[13px] font-medium transition-all duration-150 cursor-pointer;
+}
+
+.popup-btn-ghost {
+  @apply bg-transparent text-macos-text hover:bg-macos-card-hover;
+}
+
+.popup-btn-sm {
+  @apply h-8 px-2;
+}
+
+.popup-btn-xs {
+  @apply h-6 px-1.5 text-xs;
+}
+
+.popup-btn-square {
+  @apply p-0 aspect-square;
+}
+
+.popup-btn-soft {
+  @apply bg-macos-input border border-macos-input-border text-macos-text hover:bg-macos-card-hover;
+}
+
+/* ============================================
+   Toggle/Switch Styles
+   ============================================ */
+[data-scope="switch"][data-part="root"] {
+  @apply flex items-center gap-3 cursor-pointer;
+}
+
+[data-scope="switch"][data-part="control"] {
+  @apply relative w-[34px] h-[20px] bg-macos-toggle-off rounded-full shrink-0 transition-colors duration-200;
+}
+
+[data-scope="switch"][data-part="control"][data-state="checked"] {
+  @apply bg-macos-accent;
+}
+
+[data-scope="switch"][data-part="thumb"] {
+  @apply absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200;
+}
+
+[data-scope="switch"][data-part="thumb"][data-state="checked"] {
+  @apply translate-x-3.5;
+}
+
+[data-scope="switch"][data-part="label"] {
+  @apply text-sm text-macos-text select-none;
+}
+
+/* ============================================
+   Slider Styles
+   ============================================ */
+[data-scope="slider"][data-part="root"] {
+  @apply flex-1;
+}
+
+[data-scope="slider"][data-part="control"] {
+  @apply relative flex items-center h-5;
+}
+
+[data-scope="slider"][data-part="track"] {
+  @apply w-full h-1 bg-macos-toggle-off rounded-sm;
+}
+
+[data-scope="slider"][data-part="range"] {
+  @apply h-full rounded-sm;
+}
+
+[data-scope="slider"][data-part="range"][data-volume-level="safe"] {
+  @apply bg-macos-success;
+}
+
+[data-scope="slider"][data-part="range"][data-volume-level="warning"] {
+  @apply bg-macos-warning;
+}
+
+[data-scope="slider"][data-part="range"][data-volume-level="danger"] {
+  @apply bg-macos-error;
+}
+
+[data-scope="slider"][data-part="thumb"] {
+  @apply w-[18px] h-[18px] bg-white rounded-full shadow-md cursor-pointer;
+}
+
+[data-scope="slider"][data-part="thumb"]:hover {
+  @apply scale-110;
+}
+
+/* ============================================
+   Dropdown/Tooltip Styles
+   ============================================ */
+[data-scope="tooltip"][data-part="content"],
+.popup-dropdown {
+  @apply bg-macos-card border border-macos-divider rounded-macos-md shadow-macos-lg p-3 z-50;
+}
+
+/* ============================================
+   Keyboard Shortcut Display
+   ============================================ */
+.popup-kbd {
+  @apply inline-flex items-center gap-0.5 bg-macos-input border border-macos-input-border rounded py-0.5 px-1.5 text-[10px] font-macos-mono text-macos-text-secondary;
+}
+
+/* ============================================
+   Alert Styles
+   ============================================ */
+.popup-alert {
+  @apply flex items-center gap-2 py-2 px-3 rounded-macos-md text-xs;
+}
+
+.popup-alert-warning {
+  @apply bg-macos-warning/15 text-macos-warning;
+}
+
+.popup-alert-error {
+  @apply bg-macos-error/15 text-macos-error;
+}
+
+/* ============================================
+   Divider Styles
+   ============================================ */
+.popup-divider {
+  @apply flex items-center gap-2 my-2 text-xs text-macos-text-tertiary;
+}
+
+.popup-divider::before,
+.popup-divider::after {
+  @apply flex-1 h-px bg-macos-divider content-[''];
+}
+
+/* ============================================
+   Tab Card Styles
+   ============================================ */
+.popup-tab-card {
+  @apply bg-macos-input rounded-macos-md px-3 py-2;
+}
+
+/* ============================================
+   Loading Spinner
+   ============================================ */
+.popup-spinner {
+  @apply w-5 h-5 border-2 border-macos-text-tertiary border-t-macos-accent rounded-full animate-spin;
 }
