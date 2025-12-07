@@ -1,10 +1,15 @@
-import { Globe, Search, Trash2 } from "lucide-solid";
+import { Ban, Globe, Search, Trash2 } from "lucide-solid";
 import { createSignal, For, onMount, Show } from "solid-js";
 import toast from "solid-toast";
 import { type Messages, useI18n } from "@/utils/i18n";
 import {
+  addToBlacklist,
+  clearAllDomainSettings,
   getAllDomainSettings,
+  getGlobalSettings,
   removeDomainSettings,
+  removeFromBlacklist,
+  removeMultipleDomainSettings,
   type StoredDomainEntry,
   saveDomainSettings,
 } from "@/utils/storage";
@@ -12,12 +17,17 @@ import {
 export default function DomainManager() {
   const { m } = useI18n();
   const [domains, setDomains] = createSignal<StoredDomainEntry[]>([]);
+  const [blacklist, setBlacklist] = createSignal<string[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
   const [searchQuery, setSearchQuery] = createSignal("");
+  const [selectedDomains, setSelectedDomains] = createSignal<Set<string>>(new Set());
+  const [showBlacklist, setShowBlacklist] = createSignal(false);
+  const [newBlacklistDomain, setNewBlacklistDomain] = createSignal("");
 
   // Load all domain settings on mount
   onMount(async () => {
     await refreshDomains();
+    await refreshBlacklist();
   });
 
   async function refreshDomains() {
@@ -32,15 +42,85 @@ export default function DomainManager() {
     }
   }
 
+  async function refreshBlacklist() {
+    const settings = await getGlobalSettings();
+    setBlacklist(settings.blacklist);
+  }
+
   async function handleDeleteDomain(domain: string) {
     if (!confirm(m.domains_delete_confirm())) return;
     try {
       await removeDomainSettings(domain);
       setDomains((prev) => prev.filter((d) => d.domain !== domain));
+      setSelectedDomains((prev) => {
+        prev.delete(domain);
+        return new Set(prev);
+      });
       toast.success(m.domains_deleted());
     } catch (error) {
       console.error("[VolumeHero] Failed to delete domain:", error);
       toast.error("Failed to delete");
+    }
+  }
+
+  async function handleBulkDelete() {
+    const selected = Array.from(selectedDomains());
+    if (selected.length === 0) return;
+    if (!confirm(`Delete ${selected.length} selected domains?`)) return;
+    try {
+      await removeMultipleDomainSettings(selected);
+      setDomains((prev) => prev.filter((d) => !selected.includes(d.domain)));
+      setSelectedDomains(new Set());
+      toast.success(m.domains_deleted());
+    } catch (error) {
+      console.error("[VolumeHero] Failed to bulk delete:", error);
+      toast.error("Failed to delete");
+    }
+  }
+
+  async function handleClearAll() {
+    if (!confirm(m.domains_clear_confirm())) return;
+    try {
+      await clearAllDomainSettings();
+      setDomains([]);
+      setSelectedDomains(new Set());
+      toast.success(m.domains_cleared());
+    } catch (error) {
+      console.error("[VolumeHero] Failed to clear all:", error);
+      toast.error("Failed to clear");
+    }
+  }
+
+  async function handleAddToBlacklist() {
+    const domain = newBlacklistDomain().trim();
+    if (!domain) return;
+    await addToBlacklist(domain);
+    await refreshBlacklist();
+    setNewBlacklistDomain("");
+    toast.success(m.blacklist_added());
+  }
+
+  async function handleRemoveFromBlacklist(domain: string) {
+    await removeFromBlacklist(domain);
+    await refreshBlacklist();
+    toast.success(m.blacklist_removed());
+  }
+
+  function toggleDomainSelection(domain: string) {
+    setSelectedDomains((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(domain)) newSet.delete(domain);
+      else newSet.add(domain);
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    const filtered = filteredDomains();
+    if (selectedDomains().size === filtered.length) {
+      setSelectedDomains(new Set());
+    } else {
+      setSelectedDomains(new Set(filtered.map((d) => d.domain)));
     }
   }
 
@@ -52,11 +132,7 @@ export default function DomainManager() {
           d.domain === domain
             ? {
                 ...d,
-                settings: {
-                  ...d.settings,
-                  autoApply,
-                  lastApplied: Date.now(),
-                },
+                settings: { ...d.settings, autoApply, lastApplied: Date.now() },
               }
             : d
         )
@@ -83,54 +159,227 @@ export default function DomainManager() {
   };
 
   return (
-    <div class="space-y-4">
+    <>
+      {/* Toolbar */}
+      <div style={{ display: "flex", gap: "8px", "margin-bottom": "16px" }}>
+        <button
+          type="button"
+          class={`macos-button ${showBlacklist() ? "macos-button-primary" : ""}`}
+          onClick={() => setShowBlacklist(!showBlacklist())}
+        >
+          <Ban class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />{" "}
+          {m.blacklist_title()}
+        </button>
+        <Show when={selectedDomains().size > 0}>
+          <button type="button" class="macos-button macos-button-danger" onClick={handleBulkDelete}>
+            <Trash2 class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />{" "}
+            {m.domains_bulk_delete()} ({selectedDomains().size})
+          </button>
+        </Show>
+        <Show when={domains().length > 0}>
+          <button type="button" class="macos-button macos-button-danger" onClick={handleClearAll}>
+            {m.domains_clear_all()}
+          </button>
+        </Show>
+      </div>
+
+      {/* Blacklist Section */}
+      <Show when={showBlacklist()}>
+        <div class="macos-card" style={{ "margin-bottom": "16px" }}>
+          <div class="macos-card-item" style={{ display: "block" }}>
+            <p class="macos-card-label-title" style={{ "margin-bottom": "8px" }}>
+              <Ban class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />
+              {m.blacklist_title()}
+            </p>
+            <p class="macos-card-label-description" style={{ "margin-bottom": "12px" }}>
+              {m.blacklist_description()}
+            </p>
+            <div style={{ display: "flex", gap: "8px", "margin-bottom": "12px" }}>
+              <input
+                type="text"
+                class="macos-input"
+                style={{ flex: 1 }}
+                placeholder="example.com"
+                value={newBlacklistDomain()}
+                onInput={(e) => setNewBlacklistDomain(e.currentTarget.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddToBlacklist()}
+              />
+              <button
+                type="button"
+                class="macos-button macos-button-primary"
+                onClick={handleAddToBlacklist}
+              >
+                {m.blacklist_add()}
+              </button>
+            </div>
+            <Show when={blacklist().length === 0}>
+              <p class="macos-card-label-description">{m.blacklist_empty()}</p>
+            </Show>
+            <div class="macos-chip-group">
+              <For each={blacklist()}>
+                {(domain) => (
+                  <span
+                    class="macos-chip"
+                    style={{
+                      display: "inline-flex",
+                      "align-items": "center",
+                      gap: "6px",
+                    }}
+                  >
+                    {domain}
+                    <button
+                      type="button"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--macos-text-secondary)",
+                        padding: "0",
+                      }}
+                      onClick={() => handleRemoveFromBlacklist(domain)}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </For>
+            </div>
+          </div>
+        </div>
+      </Show>
+
       {/* Search Bar */}
-      <label class="input input-bordered flex items-center gap-2 bg-base-300/50 focus-within:border-primary focus-within:outline-none">
-        <Search class="h-4 w-4 text-base-content/50" />
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          gap: "8px",
+          background: "var(--macos-input-bg)",
+          border: "1px solid var(--macos-input-border)",
+          "border-radius": "var(--macos-radius-sm)",
+          padding: "8px 12px",
+          "margin-bottom": "12px",
+        }}
+      >
+        <Search
+          style={{
+            width: "16px",
+            height: "16px",
+            color: "var(--macos-text-tertiary)",
+          }}
+        />
         <input
           type="text"
           placeholder={m.domains_search()}
-          class="grow bg-transparent border-none outline-none placeholder:text-base-content/40"
+          style={{
+            flex: 1,
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            color: "var(--macos-text-primary)",
+            "font-size": "13px",
+          }}
           value={searchQuery()}
           onInput={(e) => setSearchQuery(e.target.value)}
         />
         <Show when={searchQuery()}>
           <button
             type="button"
-            class="btn btn-ghost btn-xs btn-circle hover:bg-base-content/10"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--macos-text-secondary)",
+              padding: "0",
+            }}
             onClick={() => setSearchQuery("")}
           >
             ✕
           </button>
         </Show>
-      </label>
+      </div>
+
+      {/* Select All / Selection Info */}
+      <Show when={filteredDomains().length > 0}>
+        <div
+          style={{
+            display: "flex",
+            "align-items": "center",
+            gap: "8px",
+            "font-size": "12px",
+            "margin-bottom": "12px",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              "align-items": "center",
+              gap: "6px",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={
+                selectedDomains().size === filteredDomains().length && filteredDomains().length > 0
+              }
+              onChange={toggleSelectAll}
+            />
+            <span style={{ color: "var(--macos-text-primary)" }}>{m.select_all()}</span>
+          </label>
+          <Show when={selectedDomains().size > 0}>
+            <span style={{ color: "var(--macos-text-secondary)" }}>
+              ({selectedDomains().size} {m.domains_selected()})
+            </span>
+          </Show>
+        </div>
+      </Show>
 
       {/* Loading State */}
       <Show when={isLoading()}>
-        <div class="flex justify-center py-8">
-          <span class="loading loading-spinner loading-lg" />
+        <div
+          style={{
+            display: "flex",
+            "justify-content": "center",
+            padding: "32px 0",
+          }}
+        >
+          <span class="macos-spinner" />
         </div>
       </Show>
 
       {/* Empty State */}
       <Show when={!isLoading() && domains().length === 0}>
-        <div class="text-center py-8 text-base-content/60">
-          <Globe class="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <div
+          style={{
+            "text-align": "center",
+            padding: "32px 0",
+            color: "var(--macos-text-secondary)",
+          }}
+        >
+          <Globe
+            style={{
+              width: "48px",
+              height: "48px",
+              margin: "0 auto 16px",
+              opacity: 0.5,
+            }}
+          />
           <p>{m.domains_no_domains()}</p>
         </div>
       </Show>
 
       {/* Domain List */}
       <Show when={!isLoading() && filteredDomains().length > 0}>
-        <div class="space-y-3">
+        <div class="macos-card">
           <For each={filteredDomains()}>
             {(entry) => (
               <DomainCard
                 entry={entry}
+                selected={selectedDomains().has(entry.domain)}
+                onSelect={() => toggleDomainSelection(entry.domain)}
                 onDelete={() => handleDeleteDomain(entry.domain)}
-                onAutoApplyChange={(val) =>
-                  handleAutoApplyChange(entry.domain, val)
-                }
+                onAutoApplyChange={(val) => handleAutoApplyChange(entry.domain, val)}
                 formatDate={formatDate}
                 m={m}
               />
@@ -140,22 +389,33 @@ export default function DomainManager() {
       </Show>
 
       {/* No Search Results */}
-      <Show
-        when={
-          !isLoading() && domains().length > 0 && filteredDomains().length === 0
-        }
-      >
-        <div class="text-center py-8 text-base-content/60">
-          <Search class="h-12 w-12 mx-auto mb-4 opacity-50" />
+      <Show when={!isLoading() && domains().length > 0 && filteredDomains().length === 0}>
+        <div
+          style={{
+            "text-align": "center",
+            padding: "32px 0",
+            color: "var(--macos-text-secondary)",
+          }}
+        >
+          <Search
+            style={{
+              width: "48px",
+              height: "48px",
+              margin: "0 auto 16px",
+              opacity: 0.5,
+            }}
+          />
           <p>No domains match your search</p>
         </div>
       </Show>
-    </div>
+    </>
   );
 }
 
 interface DomainCardProps {
   entry: StoredDomainEntry;
+  selected: boolean;
+  onSelect: () => void;
   onDelete: () => void;
   onAutoApplyChange: (autoApply: boolean) => void;
   formatDate: (timestamp: number) => string;
@@ -164,42 +424,73 @@ interface DomainCardProps {
 
 function DomainCard(props: DomainCardProps) {
   return (
-    <div class="card bg-base-200 shadow">
-      <div class="card-body p-4">
-        {/* Domain Header */}
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <Globe class="h-4 w-4 text-base-content/60" />
-            <span class="font-medium">{props.entry.domain}</span>
-          </div>
+    <div
+      class="macos-card-item"
+      style={{
+        display: "block",
+        background: props.selected ? "rgba(10, 132, 255, 0.1)" : "transparent",
+        border: props.selected ? "1px solid var(--macos-accent)" : "none",
+        "border-radius": props.selected ? "var(--macos-radius-sm)" : "0",
+      }}
+    >
+      {/* Domain Header */}
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+        }}
+      >
+        <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
+          <input type="checkbox" checked={props.selected} onChange={props.onSelect} />
+          <Globe
+            style={{
+              width: "16px",
+              height: "16px",
+              color: "var(--macos-text-secondary)",
+            }}
+          />
+          <span class="macos-card-label-title">{props.entry.domain}</span>
+        </div>
+        <button
+          type="button"
+          class="macos-button macos-button-danger"
+          style={{ padding: "4px 8px" }}
+          onClick={props.onDelete}
+          title={props.m.delete_text()}
+        >
+          <Trash2 style={{ width: "14px", height: "14px" }} />
+        </button>
+      </div>
+
+      {/* Volume Display & Auto-apply Toggle */}
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+          "margin-top": "10px",
+        }}
+      >
+        <label
+          style={{
+            display: "flex",
+            "align-items": "center",
+            gap: "8px",
+            cursor: "pointer",
+          }}
+        >
           <button
             type="button"
-            class="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
-            onClick={props.onDelete}
-            title={props.m.delete_text()}
-          >
-            <Trash2 class="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Volume Display & Auto-apply Toggle */}
-        <div class="flex items-center justify-between mt-3">
-          <label class="label cursor-pointer gap-2 p-0">
-            <input
-              type="checkbox"
-              class="toggle toggle-xs toggle-primary"
-              checked={props.entry.settings.autoApply}
-              onChange={(e) => props.onAutoApplyChange(e.target.checked)}
-            />
-            <span class="label-text text-xs">
-              {props.m.domains_auto_apply()}
-            </span>
-          </label>
-          <span class="text-xs text-base-content/50">
-            {props.m.domains_last_applied()}:{" "}
-            {props.formatDate(props.entry.settings.lastApplied)}
-          </span>
-        </div>
+            class={`macos-toggle ${props.entry.settings.autoApply ? "active" : ""}`}
+            style={{ transform: "scale(0.8)" }}
+            onClick={() => props.onAutoApplyChange(!props.entry.settings.autoApply)}
+          />
+          <span class="macos-card-label-description">{props.m.domains_auto_apply()}</span>
+        </label>
+        <span class="macos-card-label-description">
+          {props.m.domains_last_applied()}: {props.formatDate(props.entry.settings.lastApplied)}
+        </span>
       </div>
     </div>
   );
