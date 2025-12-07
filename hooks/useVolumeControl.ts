@@ -1,15 +1,20 @@
 /**
  * SolidJS hook for volume control state management
  * Provides reactive state for volume slider with auto-save and debouncing
+ * Optimized for fast popup loading with non-blocking initialization
  */
 
+import { debounce } from "es-toolkit";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import toast from "solid-toast";
 import {
   DEFAULT_SETTINGS,
   type DomainSettings,
   extractDomain,
+  type GlobalSettings,
   getDomainSettings,
+  getDomainSettingsSync,
+  getGlobalSettings,
   saveDomainSettings,
 } from "@/utils/storage";
 import type { MediaInfo, TabMediaInfo } from "@/utils/volume";
@@ -22,6 +27,7 @@ export interface VolumeControlState {
   mediaInfo: () => MediaInfo[];
   tabsWithMedia: () => TabMediaInfo[];
   tabVolumes: () => Map<number, number>;
+  globalSettings: () => GlobalSettings | null;
   setVolume: (value: number) => void;
   setAutoApply: (value: boolean) => void;
   resetVolume: () => void;
@@ -40,24 +46,19 @@ const DEBOUNCE_DELAY = 500; // ms
  */
 export function useVolumeControl(): VolumeControlState {
   const [domain, setDomain] = createSignal<string>("");
-  const [volume, setVolumeSignal] = createSignal<number>(
-    DEFAULT_SETTINGS.volume
-  );
-  const [autoApply, setAutoApplySignal] = createSignal<boolean>(
-    DEFAULT_SETTINGS.autoApply
-  );
+  const [volume, setVolumeSignal] = createSignal<number>(DEFAULT_SETTINGS.volume);
+  const [autoApply, setAutoApplySignal] = createSignal<boolean>(DEFAULT_SETTINGS.autoApply);
   const [isLoading, setIsLoading] = createSignal<boolean>(true);
   const [mediaInfo, setMediaInfo] = createSignal<MediaInfo[]>([]);
   const [tabsWithMedia, setTabsWithMedia] = createSignal<TabMediaInfo[]>([]);
-  const [tabVolumes, setTabVolumes] = createSignal<Map<number, number>>(
-    new Map()
-  );
+  const [tabVolumes, setTabVolumes] = createSignal<Map<number, number>>(new Map());
+  const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
 
-  let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-  const tabVolumeTimeouts: Map<
+  // Store debounced functions for tab volume changes (one per tab)
+  const tabVolumeDebouncedFns = new Map<
     number,
-    ReturnType<typeof setTimeout>
-  > = new Map();
+    ReturnType<typeof debounce<(vol: number) => Promise<void>>>
+  >();
 
   /**
    * Fetch media info from the active tab
@@ -95,14 +96,12 @@ export function useVolumeControl(): VolumeControlState {
       if (response && Array.isArray(response)) {
         setTabsWithMedia(response);
 
-        // Clean up timeouts for tabs that no longer exist
-        const currentTabIds = new Set(
-          (response as TabMediaInfo[]).map((t) => t.tabId)
-        );
-        for (const [tabId, timeout] of tabVolumeTimeouts.entries()) {
+        // Clean up debounced functions for tabs that no longer exist
+        const currentTabIds = new Set((response as TabMediaInfo[]).map((t) => t.tabId));
+        for (const [tabId, debouncedFn] of tabVolumeDebouncedFns.entries()) {
           if (!currentTabIds.has(tabId)) {
-            clearTimeout(timeout);
-            tabVolumeTimeouts.delete(tabId);
+            debouncedFn.cancel();
+            tabVolumeDebouncedFns.delete(tabId);
           }
         }
 
@@ -134,6 +133,40 @@ export function useVolumeControl(): VolumeControlState {
   }
 
   /**
+   * Get or create a debounced function for applying volume to a specific tab
+   */
+  function getTabVolumeDebounced(
+    tabId: number
+  ): ReturnType<typeof debounce<(vol: number) => Promise<void>>> {
+    let debouncedFn = tabVolumeDebouncedFns.get(tabId);
+    if (!debouncedFn) {
+      debouncedFn = debounce(async (vol: number) => {
+        try {
+          // Apply volume to tab
+          await browser.runtime.sendMessage({
+            type: "APPLY_VOLUME_TO_TAB",
+            tabId,
+            volume: vol,
+          });
+
+          // Save domain settings for non-active tabs
+          const tab = tabsWithMedia().find((t) => t.tabId === tabId);
+          if (tab && !tab.isActive) {
+            const tabDomain = extractDomain(tab.url);
+            if (tabDomain) {
+              await saveDomainSettings(tabDomain, { volume: vol });
+            }
+          }
+        } catch (error) {
+          console.error(`[VolumeHero] Failed to apply volume to tab ${tabId}:`, error);
+        }
+      }, DEBOUNCE_DELAY);
+      tabVolumeDebouncedFns.set(tabId, debouncedFn);
+    }
+    return debouncedFn;
+  }
+
+  /**
    * Set volume for a specific tab with debouncing
    * Also persists to domain settings for non-active tabs
    */
@@ -147,42 +180,8 @@ export function useVolumeControl(): VolumeControlState {
       return newMap;
     });
 
-    // Clear existing timeout for this tab
-    const existingTimeout = tabVolumeTimeouts.get(tabId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
-
-    // Debounce the actual apply and save
-    const timeout = setTimeout(async () => {
-      try {
-        // Apply volume to tab
-        await browser.runtime.sendMessage({
-          type: "APPLY_VOLUME_TO_TAB",
-          tabId,
-          volume: clampedVol,
-        });
-
-        // Save domain settings for non-active tabs
-        const tab = tabsWithMedia().find((t) => t.tabId === tabId);
-        if (tab && !tab.isActive) {
-          const tabDomain = extractDomain(tab.url);
-          if (tabDomain) {
-            await saveDomainSettings(tabDomain, { volume: clampedVol });
-          }
-        }
-
-        // Clean up completed timeout
-        tabVolumeTimeouts.delete(tabId);
-      } catch (error) {
-        console.error(
-          `[VolumeHero] Failed to apply volume to tab ${tabId}:`,
-          error
-        );
-      }
-    }, DEBOUNCE_DELAY);
-
-    tabVolumeTimeouts.set(tabId, timeout);
+    // Call debounced function to apply and save
+    getTabVolumeDebounced(tabId)(clampedVol);
   }
 
   /**
@@ -199,67 +198,73 @@ export function useVolumeControl(): VolumeControlState {
     }
   }
 
-  // Load initial settings from active tab
-  onMount(async () => {
-    try {
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      const activeTab = tabs[0];
+  // Load initial settings from active tab - optimized for fast popup display
+  onMount(() => {
+    // FAST PATH: Get tab info synchronously and show UI immediately with cached/default values
+    // Then update reactively when async data arrives
+    const initializeAsync = async () => {
+      try {
+        // Load global settings first
+        const globalSettingsData = await getGlobalSettings();
+        setGlobalSettings(globalSettingsData);
 
-      if (activeTab?.url) {
-        const currentDomain = extractDomain(activeTab.url);
-        setDomain(currentDomain);
+        const tabs = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        const activeTab = tabs[0];
 
-        if (currentDomain) {
-          // Load domain settings first (critical for UI), then show UI immediately
-          const settings = await getDomainSettings(currentDomain);
-          setVolumeSignal(settings.volume);
-          setAutoApplySignal(settings.autoApply);
+        if (activeTab?.url) {
+          const currentDomain = extractDomain(activeTab.url);
+          setDomain(currentDomain);
 
-          // Mark as loaded so UI can render
-          setIsLoading(false);
+          if (currentDomain) {
+            // Try sync cache first for instant UI
+            const cachedSettings = getDomainSettingsSync(currentDomain);
+            setVolumeSignal(cachedSettings.volume);
+            setAutoApplySignal(cachedSettings.autoApply);
 
-          // Fetch media info and all tabs in parallel (non-blocking)
-          Promise.all([refreshMediaInfo(), refreshAllTabsMedia()]).catch(
-            (err) => {
+            // Show UI immediately (don't wait for storage verification)
+            setIsLoading(false);
+
+            // Verify/update from storage in background (will update UI if different)
+            getDomainSettings(currentDomain).then((settings) => {
+              // Only update if different from cached values
+              if (settings.volume !== cachedSettings.volume) {
+                setVolumeSignal(settings.volume);
+              }
+              if (settings.autoApply !== cachedSettings.autoApply) {
+                setAutoApplySignal(settings.autoApply);
+              }
+            });
+
+            // Fetch media info and all tabs in parallel (non-blocking)
+            Promise.all([refreshMediaInfo(), refreshAllTabsMedia()]).catch((err) => {
               console.error("[VolumeHero] Failed to refresh media:", err);
-            }
-          );
-          return;
+            });
+            return;
+          }
         }
+
+        // No domain case - show UI and load tabs media in background
+        setIsLoading(false);
+        refreshAllTabsMedia().catch((err) => {
+          console.error("[VolumeHero] Failed to refresh all tabs media:", err);
+        });
+      } catch (error) {
+        console.error("[VolumeHero] Failed to load initial settings:", error);
+        setIsLoading(false);
       }
+    };
 
-      // No domain case - still try to load tabs media
-      setIsLoading(false);
-      refreshAllTabsMedia().catch((err) => {
-        console.error("[VolumeHero] Failed to refresh all tabs media:", err);
-      });
-    } catch (error) {
-      console.error("[VolumeHero] Failed to load initial settings:", error);
-      setIsLoading(false);
-    }
-  });
-
-  // Cleanup timeout on unmount
-  onCleanup(() => {
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    // Clear all tab volume timeouts
-    for (const timeout of tabVolumeTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    tabVolumeTimeouts.clear();
+    // Start async initialization immediately but don't block
+    initializeAsync();
   });
 
   /**
-   * Save settings with debouncing
+   * Save settings to storage (non-debounced helper)
    */
-  async function saveSettings(
-    settings: Partial<DomainSettings>
-  ): Promise<void> {
+  async function saveSettings(settings: Partial<DomainSettings>): Promise<void> {
     const currentDomain = domain();
     if (!currentDomain) return;
 
@@ -273,22 +278,35 @@ export function useVolumeControl(): VolumeControlState {
   }
 
   /**
+   * Debounced function to save volume and apply to tab
+   */
+  const debouncedSaveAndApply = debounce(async (clampedValue: number) => {
+    await saveSettings({ volume: clampedValue });
+    await applyToTab();
+  }, DEBOUNCE_DELAY);
+
+  // Cleanup debounced functions on unmount
+  onCleanup(() => {
+    debouncedSaveAndApply.cancel();
+    // Cancel all tab volume debounced functions
+    for (const debouncedFn of tabVolumeDebouncedFns.values()) {
+      debouncedFn.cancel();
+    }
+    tabVolumeDebouncedFns.clear();
+  });
+
+  /**
    * Set volume with debounced save
+   * Respects maxVolumeLimit from global settings
    */
   function setVolume(value: number): void {
-    const clampedValue = Math.max(0, Math.min(6, value));
+    const settings = globalSettings();
+    const maxLimit = settings?.maxVolumeLimit ?? 6;
+    const clampedValue = Math.max(0, Math.min(maxLimit, value));
     setVolumeSignal(clampedValue);
 
-    // Clear existing timeout
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-
-    // Debounce save
-    saveTimeout = setTimeout(() => {
-      saveSettings({ volume: clampedValue });
-      applyToTab();
-    }, DEBOUNCE_DELAY);
+    // Call debounced save and apply
+    debouncedSaveAndApply(clampedValue);
   }
 
   /**
@@ -336,6 +354,7 @@ export function useVolumeControl(): VolumeControlState {
     mediaInfo,
     tabsWithMedia,
     tabVolumes,
+    globalSettings,
     setVolume,
     setAutoApply,
     resetVolume,

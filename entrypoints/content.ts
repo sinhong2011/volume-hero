@@ -3,20 +3,20 @@
  * Handles media element detection and volume application
  */
 
+import { onMediaDetected, processExistingMedia, startObserving } from "@/content/media-observer";
+import { showVolumeOSD } from "@/utils/osd";
 import {
-  onMediaDetected,
-  processExistingMedia,
-  startObserving,
-} from "@/content/media-observer";
-import { extractDomain, getDomainSettings } from "@/utils/storage";
-import {
-  applyVolumeToMedia,
-  getAllMediaElements,
-  getAllMediaInfo,
-} from "@/utils/volume";
+  extractDomain,
+  getDomainSettings,
+  getGlobalSettings,
+  isDomainBlacklisted,
+} from "@/utils/storage";
+import { applyVolumeToMedia, getAllMediaElements, getAllMediaInfo } from "@/utils/volume";
 
 let currentVolume = 1.0;
 let isInitialized = false;
+let osdEnabled = true;
+let osdDuration = 1500;
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -32,12 +32,24 @@ export default defineContentScript({
       return;
     }
 
+    // Check if domain is blacklisted
+    const isBlacklisted = await isDomainBlacklisted(domain);
+    if (isBlacklisted) {
+      console.log("[VolumeHero] Domain is blacklisted, skipping initialization");
+      return;
+    }
+
+    // Load global settings for OSD
+    const globalSettings = await getGlobalSettings();
+    osdEnabled = globalSettings.showOSD;
+    osdDuration = globalSettings.osdDuration;
+
     // Load saved settings
     const settings = await getDomainSettings(domain);
     currentVolume = settings.volume;
 
     // Only apply on load if autoApply is enabled
-    const shouldAutoApply = settings.autoApply;
+    const shouldAutoApply = settings.autoApply || globalSettings.autoApplyOnAllSites;
 
     console.log(
       `[VolumeHero] Domain: ${domain}, AutoApply: ${shouldAutoApply}, Volume: ${Math.round(
@@ -101,6 +113,11 @@ function handleMessage(
     mediaElements.forEach((element) => {
       applyVolumeToMedia(element, currentVolume);
     });
+
+    // Show OSD if enabled
+    if (osdEnabled) {
+      showVolumeOSD(Math.round(currentVolume * 100), false, osdDuration);
+    }
 
     console.log(
       `[VolumeHero] Applied volume ${Math.round(currentVolume * 100)}% to ${
