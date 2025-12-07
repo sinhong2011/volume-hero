@@ -7,25 +7,31 @@ import {
   languageTag,
   setLanguageTag,
 } from "@/src/paraglide/runtime";
-import { getGlobalSettings, saveGlobalSettings } from "@/utils/storage";
+import { getGlobalSettings, getGlobalSettingsSync, saveGlobalSettings } from "@/utils/storage";
 
 // Re-export types for compatibility
 export type SupportedLocale = AvailableLanguageTag;
 
 // Locale display names
-export const SUPPORTED_LOCALES: { code: AvailableLanguageTag; name: string }[] =
-  [
-    { code: "en", name: "English" },
-    { code: "zh-CN", name: "简体中文" },
-    { code: "zh-TW", name: "繁體中文" },
-    { code: "ja", name: "日本語" },
-    { code: "ko", name: "한국어" },
-  ];
+export const SUPPORTED_LOCALES: { code: AvailableLanguageTag; name: string }[] = [
+  { code: "en", name: "English" },
+  { code: "zh-CN", name: "简体中文" },
+  { code: "zh-TW", name: "繁體中文" },
+  { code: "ja", name: "日本語" },
+  { code: "ko", name: "한국어" },
+];
 
-// Global reactive state for language
-const [currentLocale, setCurrentLocale] = createSignal<AvailableLanguageTag>(
-  languageTag()
-);
+// Global reactive state for language - initialized from sync cache for instant display
+const getInitialLocale = (): AvailableLanguageTag => {
+  // Try to get cached language setting synchronously for instant display
+  const cachedSettings = getGlobalSettingsSync();
+  if (cachedSettings.language && isAvailableLanguageTag(cachedSettings.language)) {
+    return cachedSettings.language;
+  }
+  return languageTag();
+};
+
+const [currentLocale, setCurrentLocale] = createSignal<AvailableLanguageTag>(getInitialLocale());
 let initialized = false;
 
 // Set Paraglide to use a getter function that returns our reactive signal
@@ -33,6 +39,7 @@ setLanguageTag(() => currentLocale());
 
 /**
  * Initialize the i18n system by loading saved language preference
+ * This verifies the cached value and updates if needed
  */
 export async function initI18n(): Promise<void> {
   if (initialized) return;
@@ -41,7 +48,10 @@ export async function initI18n(): Promise<void> {
     const settings = await getGlobalSettings();
     const locale = settings.language;
     if (locale && isAvailableLanguageTag(locale)) {
-      setCurrentLocale(locale);
+      // Only update if different from current (already set from cache)
+      if (currentLocale() !== locale) {
+        setCurrentLocale(locale);
+      }
     }
     initialized = true;
   } catch (error) {
@@ -53,9 +63,7 @@ export async function initI18n(): Promise<void> {
 /**
  * Change the current language and save to storage
  */
-export async function changeLanguage(
-  locale: AvailableLanguageTag
-): Promise<void> {
+export async function changeLanguage(locale: AvailableLanguageTag): Promise<void> {
   if (!availableLanguageTags.includes(locale)) {
     console.warn(`[VolumeHero] Unsupported locale: ${locale}`);
     return;
