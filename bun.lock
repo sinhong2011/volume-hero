@@ -6,6 +6,7 @@
       "name": "volume-hero",
       "dependencies": {
         "@ark-ui/solid": "^5.29.1",
+        "@bradenmacdonald/s3-lite-client": "npm:@jsr/bradenmacdonald__s3-lite-client",
         "@inlang/paraglide-js": "^2.5.0",
         "@tailwindcss/vite": "^4.1.17",
         "clsx": "^2.1.1",
@@ -89,6 +90,8 @@
     "@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.3.8", "", { "os": "win32", "cpu": "arm64" }, "sha512-H4IoCHvL1fXKDrTALeTKMiE7GGWFAraDwBYFquE/L/5r1927Te0mYIGseXi4F+lrrwhSWbSGt5qPFswNoBaCxg=="],
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.3.8", "", { "os": "win32", "cpu": "x64" }, "sha512-RguzimPoZWtBapfKhKjcWXBVI91tiSprqdBYu7tWhgN8pKRZhw24rFeNZTNf6UiBfjCYCi9eFQs/JzJZIhuK4w=="],
+
+    "@bradenmacdonald/s3-lite-client": ["@jsr/bradenmacdonald__s3-lite-client@0.9.4", "https://npm.jsr.io/~/11/@jsr/bradenmacdonald__s3-lite-client/0.9.4.tgz", {}, "sha512-Uar/IGGcnhLKppxjCMSd6r8P5UO7FDPsUaqs0WcoJiV1qfKGPQjiH7IxMUbnVoa0k6bH8HkriOvZf6TWOUAcvQ=="],
 
     "@commitlint/cli": ["@commitlint/cli@20.1.0", "", { "dependencies": { "@commitlint/format": "^20.0.0", "@commitlint/lint": "^20.0.0", "@commitlint/load": "^20.1.0", "@commitlint/read": "^20.0.0", "@commitlint/types": "^20.0.0", "tinyexec": "^1.0.0", "yargs": "^17.0.0" }, "bin": { "commitlint": "./cli.js" } }, "sha512-pW5ujjrOovhq5RcYv5xCpb4GkZxkO2+GtOdBW2/qrr0Ll9tl3PX0aBBobGQl3mdZUbOBgwAexEQLeH6uxL0VYg=="],
 

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@ark-ui/solid": "^5.29.1",
+    "@bradenmacdonald/s3-lite-client": "npm:@jsr/bradenmacdonald__s3-lite-client",
     "@inlang/paraglide-js": "^2.5.0",
     "@tailwindcss/vite": "^4.1.17",
     "clsx": "^2.1.1",
