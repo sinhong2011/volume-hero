@@ -169,5 +169,6 @@
   "stats_reset_confirm": "すべての統計データをリセットしますか？",
   "stats_reset_success": "統計がリセットされました",
   "import_data": "インポート",
-  "export_data": "エクスポート"
+  "export_data": "エクスポート",
+  "sync_fill_all_fields": "すべての項目を入力してください"
 }

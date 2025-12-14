@@ -136,8 +136,8 @@
   "behavior_preference_description": "How to handle volume on page load",
   "behavior_preference_saved": "Use Saved Volume",
   "behavior_preference_last": "Use Last Adjusted Volume",
-  "sync_title": "WebDAV Cloud Sync",
-  "sync_description": "Sync your settings across devices using WebDAV",
+  "sync_title": "Cloud Sync",
+  "sync_description": "Sync your settings across devices using WebDAV or S3-compatible storage",
   "sync_server_url": "WebDAV Server URL",
   "sync_server_placeholder": "https://your-server.com/webdav/",
   "sync_username": "Username",
@@ -169,5 +169,15 @@
   "stats_reset_confirm": "Are you sure you want to reset all statistics?",
   "stats_reset_success": "Statistics reset",
   "import_data": "Import",
-  "export_data": "Export"
+  "export_data": "Export",
+  "sync_fill_all_fields": "Please fill in all fields",
+  "sync_provider": "Sync Provider",
+  "sync_provider_webdav": "WebDAV",
+  "sync_provider_s3": "S3-Compatible Storage",
+  "sync_s3_access_key": "Access Key ID",
+  "sync_s3_secret_key": "Secret Access Key",
+  "sync_s3_bucket": "Bucket Name",
+  "sync_s3_region": "Region",
+  "sync_s3_endpoint": "Custom Endpoint (Optional)",
+  "sync_s3_endpoint_placeholder": "https://s3.example.com"
 }

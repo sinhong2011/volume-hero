@@ -169,5 +169,6 @@
   "stats_reset_confirm": "確定要重設所有統計資料嗎？",
   "stats_reset_success": "統計已重設",
   "import_data": "匯入",
-  "export_data": "匯出"
+  "export_data": "匯出",
+  "sync_fill_all_fields": "請填寫所有欄位"
 }
