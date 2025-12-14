@@ -61,6 +61,17 @@ function buildAuthHeader(config: WebDAVConfig): string {
 }
 
 export async function testWebDAVConnection(config: WebDAVConfig): Promise<SyncResult> {
+  // Validate required fields
+  if (!config.serverUrl.trim()) {
+    return { success: false, message: "Server URL is required" };
+  }
+  if (!config.username.trim()) {
+    return { success: false, message: "Username is required" };
+  }
+  if (!config.password) {
+    return { success: false, message: "Password is required" };
+  }
+
   try {
     const response = await fetch(config.serverUrl, {
       method: "PROPFIND",
@@ -160,11 +171,14 @@ export async function updateSyncStatus(
 ): Promise<void> {
   const settings = await getGlobalSettings();
   await saveGlobalSettings({
-    webdav: {
-      ...settings.webdav,
-      lastSyncTime: status === "success" ? Date.now() : settings.webdav.lastSyncTime,
-      lastSyncStatus: status,
-      lastSyncError: errorMessage,
+    cloudSync: {
+      ...settings.cloudSync,
+      webdav: {
+        ...settings.cloudSync.webdav,
+        lastSyncTime: status === "success" ? Date.now() : settings.cloudSync.webdav.lastSyncTime,
+        lastSyncStatus: status,
+        lastSyncError: errorMessage,
+      },
     },
   });
 }
@@ -173,11 +187,11 @@ export async function performSync(
   conflictResolution: "local" | "remote" | "newest" = "newest"
 ): Promise<SyncResult> {
   const settings = await getGlobalSettings();
-  if (!settings.webdav.enabled) {
+  if (!settings.cloudSync.webdav.enabled) {
     return { success: false, message: "WebDAV sync is not enabled" };
   }
   await updateSyncStatus("syncing");
-  const result = await syncWithWebDAV(settings.webdav, conflictResolution);
+  const result = await syncWithWebDAV(settings.cloudSync.webdav, conflictResolution);
   if (result.success) {
     await updateSyncStatus("success");
   } else {
@@ -199,8 +213,8 @@ let autoSyncInterval: ReturnType<typeof setInterval> | null = null;
 export function startAutoSync(): void {
   stopAutoSync();
   getGlobalSettings().then((settings) => {
-    if (settings.webdav.enabled && settings.webdav.autoSync) {
-      const intervalMs = settings.webdav.syncIntervalMinutes * 60 * 1000;
+    if (settings.cloudSync.webdav.enabled && settings.cloudSync.webdav.autoSync) {
+      const intervalMs = settings.cloudSync.webdav.syncIntervalMinutes * 60 * 1000;
       autoSyncInterval = setInterval(() => {
         performSync("newest").catch(console.error);
       }, intervalMs);
