@@ -42,14 +42,14 @@ export default defineContentScript({
     // Load global settings for OSD
     const globalSettings = await getGlobalSettings();
     osdEnabled = globalSettings.showOSD;
-    osdDuration = globalSettings.osdDuration;
+    osdDuration = globalSettings.osdDurationMs;
 
     // Load saved settings
     const settings = await getDomainSettings(domain);
     currentVolume = settings.volume;
 
     // Only apply on load if autoApply is enabled
-    const shouldAutoApply = settings.autoApply || globalSettings.autoApplyOnAllSites;
+    const shouldAutoApply = settings.autoApply || globalSettings.autoApplyAllByDefault;
 
     console.log(
       `[VolumeHero] Domain: ${domain}, AutoApply: ${shouldAutoApply}, Volume: ${Math.round(
