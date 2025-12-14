@@ -30,6 +30,9 @@ export interface KeyboardShortcuts {
   volumeMute: KeyboardShortcut;
 }
 
+// Sync provider type
+export type SyncProvider = "webdav" | "s3";
+
 // WebDAV configuration
 export interface WebDAVConfig {
   enabled: boolean;
@@ -41,6 +44,28 @@ export interface WebDAVConfig {
   lastSyncTime: number | null;
   lastSyncStatus: "success" | "error" | "never" | "syncing";
   lastSyncError?: string;
+}
+
+// S3-compatible storage configuration
+export interface S3Config {
+  enabled: boolean;
+  accessKeyId: string; // Will be encrypted before storage
+  secretAccessKey: string; // Will be encrypted before storage
+  bucketName: string;
+  region: string;
+  endpoint?: string; // Optional custom endpoint for S3-compatible services
+  autoSync: boolean;
+  syncIntervalMinutes: number;
+  lastSyncTime: number | null;
+  lastSyncStatus: "success" | "error" | "never" | "syncing";
+  lastSyncError?: string;
+}
+
+// Cloud sync configuration
+export interface CloudSyncConfig {
+  provider: SyncProvider;
+  webdav: WebDAVConfig;
+  s3: S3Config;
 }
 
 // Usage statistics
@@ -83,8 +108,8 @@ export interface GlobalSettings {
   showBadge: boolean; // Show volume percentage on extension icon
   volumePreferenceMode: VolumePreferenceMode; // 'saved' or 'last'
 
-  // WebDAV Cloud Sync
-  webdav: WebDAVConfig;
+  // Cloud Sync (WebDAV & S3)
+  cloudSync: CloudSyncConfig;
 
   // Statistics
   statistics: UsageStatistics;
@@ -369,6 +394,31 @@ export const DEFAULT_WEBDAV_CONFIG: WebDAVConfig = {
 };
 
 /**
+ * Default S3 configuration
+ */
+export const DEFAULT_S3_CONFIG: S3Config = {
+  enabled: false,
+  accessKeyId: "",
+  secretAccessKey: "",
+  bucketName: "",
+  region: "us-east-1",
+  endpoint: "",
+  autoSync: false,
+  syncIntervalMinutes: 30,
+  lastSyncTime: null,
+  lastSyncStatus: "never",
+};
+
+/**
+ * Default cloud sync configuration
+ */
+export const DEFAULT_CLOUD_SYNC_CONFIG: CloudSyncConfig = {
+  provider: "webdav",
+  webdav: DEFAULT_WEBDAV_CONFIG,
+  s3: DEFAULT_S3_CONFIG,
+};
+
+/**
  * Default usage statistics
  */
 export const DEFAULT_STATISTICS: UsageStatistics = {
@@ -410,8 +460,8 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   showBadge: true,
   volumePreferenceMode: "saved",
 
-  // WebDAV Cloud Sync
-  webdav: DEFAULT_WEBDAV_CONFIG,
+  // Cloud Sync
+  cloudSync: DEFAULT_CLOUD_SYNC_CONFIG,
 
   // Statistics
   statistics: DEFAULT_STATISTICS,
@@ -442,9 +492,17 @@ export async function getGlobalSettings(): Promise<GlobalSettings> {
           ...DEFAULT_GLOBAL_SETTINGS.keyboardShortcuts,
           ...storedSettings.keyboardShortcuts,
         },
-        webdav: {
-          ...DEFAULT_GLOBAL_SETTINGS.webdav,
-          ...storedSettings.webdav,
+        cloudSync: {
+          ...DEFAULT_GLOBAL_SETTINGS.cloudSync,
+          ...storedSettings.cloudSync,
+          webdav: {
+            ...DEFAULT_GLOBAL_SETTINGS.cloudSync.webdav,
+            ...storedSettings.cloudSync?.webdav,
+          },
+          s3: {
+            ...DEFAULT_GLOBAL_SETTINGS.cloudSync.s3,
+            ...storedSettings.cloudSync?.s3,
+          },
         },
         statistics: {
           ...DEFAULT_GLOBAL_SETTINGS.statistics,
@@ -688,11 +746,11 @@ export async function importSettings(
   try {
     // Import global settings
     if (overwrite) {
-      // Preserve WebDAV credentials if they exist
+      // Preserve cloud sync credentials if they exist
       const currentSettings = await getGlobalSettings();
       const importedSettings = {
         ...data.globalSettings,
-        webdav: currentSettings.webdav, // Keep current WebDAV config
+        cloudSync: currentSettings.cloudSync, // Keep current cloud sync config
       };
       await saveGlobalSettings(importedSettings);
     }
