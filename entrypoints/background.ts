@@ -3,11 +3,8 @@
  * Handles extension events and tab communication
  */
 
-import {
-  extractDomain,
-  getDomainSettings,
-  saveDomainSettings,
-} from "@/utils/storage";
+import { extractDomain, getDomainSettings, saveDomainSettings } from "@/utils/storage";
+import { startAutoSync } from "@/utils/sync";
 import type { MediaInfo, TabMediaInfo } from "@/utils/volume";
 
 // Track previous volume for mute toggle
@@ -18,12 +15,21 @@ export default defineBackground(() => {
     id: browser.runtime.id,
   });
 
+  // Initialize auto-sync on startup
+  startAutoSync().catch((error) => {
+    console.error("[VolumeHero] Failed to start auto-sync:", error);
+  });
+
   // Handle extension installation
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install") {
       console.log("[VolumeHero] Extension installed");
     } else if (details.reason === "update") {
       console.log("[VolumeHero] Extension updated");
+      // Restart auto-sync after update
+      startAutoSync().catch((error) => {
+        console.error("[VolumeHero] Failed to start auto-sync after update:", error);
+      });
     }
   });
 
@@ -81,11 +87,7 @@ export default defineBackground(() => {
     // Update badge to show current volume
     updateBadge(activeTab.id, newVolume);
 
-    console.log(
-      `[VolumeHero] Command ${command}: volume set to ${Math.round(
-        newVolume * 100
-      )}%`
-    );
+    console.log(`[VolumeHero] Command ${command}: volume set to ${Math.round(newVolume * 100)}%`);
   });
 
   // Handle messages from popup
@@ -197,9 +199,7 @@ async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
 
       if (response?.mediaInfo && response.mediaInfo.length > 0) {
         // Check if any media is playing (not paused)
-        const playingMedia = response.mediaInfo.filter(
-          (m: MediaInfo) => !m.paused
-        );
+        const playingMedia = response.mediaInfo.filter((m: MediaInfo) => !m.paused);
 
         if (playingMedia.length > 0) {
           tabsWithMedia.push({
@@ -224,10 +224,7 @@ async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
 /**
  * Apply volume to a specific tab
  */
-async function applyVolumeToTab(
-  tabId: number,
-  volume: number
-): Promise<boolean> {
+async function applyVolumeToTab(tabId: number, volume: number): Promise<boolean> {
   try {
     await browser.tabs.sendMessage(tabId, {
       type: "APPLY_VOLUME",
@@ -235,10 +232,7 @@ async function applyVolumeToTab(
     });
     return true;
   } catch (error) {
-    console.error(
-      `[VolumeHero] Failed to apply volume to tab ${tabId}:`,
-      error
-    );
+    console.error(`[VolumeHero] Failed to apply volume to tab ${tabId}:`, error);
     return false;
   }
 }
