@@ -44,7 +44,7 @@ export default function DomainManager() {
 
   async function refreshBlacklist() {
     const settings = await getGlobalSettings();
-    setBlacklist(settings.blacklist);
+    setBlacklist(settings.blacklistedDomains);
   }
 
   async function handleDeleteDomain(domain: string) {
@@ -70,7 +70,7 @@ export default function DomainManager() {
     try {
       await removeMultipleDomainSettings(selected);
       setDomains((prev) => prev.filter((d) => !selected.includes(d.domain)));
-      setSelectedDomains(new Set());
+      setSelectedDomains(new Set<string>());
       toast.success(m.domains_deleted());
     } catch (error) {
       console.error("[VolumeHero] Failed to bulk delete:", error);
@@ -83,7 +83,7 @@ export default function DomainManager() {
     try {
       await clearAllDomainSettings();
       setDomains([]);
-      setSelectedDomains(new Set());
+      setSelectedDomains(new Set<string>());
       toast.success(m.domains_cleared());
     } catch (error) {
       console.error("[VolumeHero] Failed to clear all:", error);
@@ -118,9 +118,9 @@ export default function DomainManager() {
   function toggleSelectAll() {
     const filtered = filteredDomains();
     if (selectedDomains().size === filtered.length) {
-      setSelectedDomains(new Set());
+      setSelectedDomains(new Set<string>());
     } else {
-      setSelectedDomains(new Set(filtered.map((d) => d.domain)));
+      setSelectedDomains(new Set<string>(filtered.map((d) => d.domain)));
     }
   }
 
