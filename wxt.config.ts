@@ -7,10 +7,12 @@ export default defineConfig({
   modules: ["@wxt-dev/module-solid"],
   manifest: {
     name: "Volume Hero",
-    description:
-      "Boost audio/video volume beyond 100% (up to 600%) with per-site memory",
+    description: "Boost audio/video volume beyond 100% (up to 600%) with per-site memory",
     default_locale: "en",
     permissions: ["storage", "activeTab", "tabs"],
+    action: {
+      default_icon: "icon/logo-96.png",
+    },
     commands: {
       "volume-up": {
         suggested_key: {
