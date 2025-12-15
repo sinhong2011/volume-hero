@@ -222,7 +222,10 @@ function App() {
       <div class="popup-card-body">
         {/* Header */}
         <div class="flex items-center justify-between">
-          <h2 class="popup-card-title">🔊 {m.popup_title()}</h2>
+          <h2 class="popup-card-title flex items-center gap-2">
+            <img src="/icon/logo.svg" alt="Volume Hero" class="size-6 rounded" />
+            {m.popup_title()}
+          </h2>
           <div class="flex items-center gap-1">
             {/* Keyboard Shortcuts Tooltip */}
             <Show when={domain()}>

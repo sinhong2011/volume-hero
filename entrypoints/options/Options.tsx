@@ -45,7 +45,11 @@ export default function Options() {
       {/* macOS-style Sidebar */}
       <aside class="macos-sidebar">
         <div class="macos-sidebar-header">
-          <span class="macos-sidebar-header-icon">🔊</span>
+          <img
+            src="/icon/logo.svg"
+            alt="Volume Hero"
+            class="macos-sidebar-header-icon rounded-lg size-10"
+          />
           <div>
             <h1 class="macos-sidebar-header-title">{m.ext_name()}</h1>
             <p class="macos-sidebar-header-subtitle">{m.settings_title()}</p>
