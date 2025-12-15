@@ -1,0 +1,96 @@
+name: Publish to Stores
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
+      chrome:
+        description: "Publish to Chrome Web Store"
+        required: false
+        type: boolean
+        default: true
+      firefox:
+        description: "Publish to Firefox Add-ons"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  publish-chrome:
+    name: Publish to Chrome Web Store
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'release' || inputs.chrome }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Chrome extension
+        run: bun run zip
+
+      - name: Find Chrome zip
+        id: find-zip
+        run: |
+          ZIP_FILE=$(find .output -name "*chrome*.zip" | head -1)
+          echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: ${{ steps.find-zip.outputs.ZIP_FILE }}
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
+
+  publish-firefox:
+    name: Publish to Firefox Add-ons
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'release' || inputs.firefox }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Setup Node.js (for web-ext)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install web-ext
+        run: npm install -g web-ext
+
+      - name: Build Firefox extension
+        run: bun run build:firefox
+
+      - name: Sign and publish to Firefox Add-ons
+        run: |
+          web-ext sign \
+            --source-dir .output/firefox-mv2 \
+            --api-key ${{ secrets.FIREFOX_API_KEY }} \
+            --api-secret ${{ secrets.FIREFOX_API_SECRET }} \
+            --channel listed
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.FIREFOX_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
+

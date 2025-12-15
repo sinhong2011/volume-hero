@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # JavaScript/Bun dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    target-branch: "develop"
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "@biomejs/*"
+          - "@commitlint/*"
+          - "typescript"
+          - "lefthook"
+      wxt:
+        patterns:
+          - "wxt"
+          - "@wxt-dev/*"
+      solid:
+        patterns:
+          - "solid-js"
+          - "@ark-ui/solid"
+          - "solid-toast"
+          - "lucide-solid"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    target-branch: "develop"
+    labels:
+      - "dependencies"
+      - "ci"
+      - "automated"
+
