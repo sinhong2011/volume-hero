@@ -34,8 +34,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Generate Paraglide messages
-        run: bunx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
+      - name: Restore Paraglide type declarations
+        run: git checkout src/paraglide/*.d.ts
 
       - name: Lint
         run: bun run lint
