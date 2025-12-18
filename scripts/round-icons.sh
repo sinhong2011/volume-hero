@@ -1,24 +1,23 @@
 #!/bin/bash
 
-# Script to generate PNG icons from SVG logo
+# Script to generate PNG icons from logo
 # Usage: ./scripts/round-icons.sh
 
 set -e
 
-SOURCE_ICON="public/icon/logo.svg"
+SOURCE_ICON="public/icon/logo.png"
 OUTPUT_DIR="public/icon"
 
-# Function to create PNG icon from SVG
+# Function to create resized PNG icon
 create_icon() {
     local size=$1
-    local output="${OUTPUT_DIR}/${size}.png"
+    local output="${OUTPUT_DIR}/logo-${size}.png"
 
     echo "Creating ${size}x${size} icon..."
 
-    # Convert SVG to PNG with specified size
+    # Resize PNG to specified size
     # Using -background none to preserve transparency
-    # Using -density for better quality rendering
-    magick -background none -density 300 "${SOURCE_ICON}" \
+    magick "${SOURCE_ICON}" \
         -resize "${size}x${size}" \
         "${output}"
 }
