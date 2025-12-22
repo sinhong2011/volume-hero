@@ -75,18 +75,47 @@ export function showVolumeOSD(
   const progressColor = getProgressColor(volumePercent);
   const progressWidth = Math.min(100, (volumePercent / 600) * 100);
 
-  osd.innerHTML = `
-    <span style="font-size: 24px;">${icon}</span>
-    <div style="display: flex; flex-direction: column; gap: 6px; min-width: 120px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 12px; opacity: 0.7;">Volume Hero</span>
-        <span>${displayValue}</span>
-      </div>
-      <div style="background: rgba(255,255,255,0.2); border-radius: 4px; height: 6px; overflow: hidden;">
-        <div style="background: ${progressColor}; height: 100%; width: ${progressWidth}%; transition: width 0.1s ease-out; border-radius: 4px;"></div>
-      </div>
-    </div>
-  `;
+  // Clear existing content
+  osd.textContent = "";
+
+  // Create icon span
+  const iconSpan = document.createElement("span");
+  iconSpan.style.cssText = "font-size: 24px;";
+  iconSpan.textContent = icon;
+
+  // Create content container
+  const contentDiv = document.createElement("div");
+  contentDiv.style.cssText = "display: flex; flex-direction: column; gap: 6px; min-width: 120px;";
+
+  // Create header row
+  const headerRow = document.createElement("div");
+  headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center;";
+
+  const labelSpan = document.createElement("span");
+  labelSpan.style.cssText = "font-size: 12px; opacity: 0.7;";
+  labelSpan.textContent = "Volume Hero";
+
+  const valueSpan = document.createElement("span");
+  valueSpan.textContent = displayValue;
+
+  headerRow.appendChild(labelSpan);
+  headerRow.appendChild(valueSpan);
+
+  // Create progress bar container
+  const progressContainer = document.createElement("div");
+  progressContainer.style.cssText =
+    "background: rgba(255,255,255,0.2); border-radius: 4px; height: 6px; overflow: hidden;";
+
+  const progressBar = document.createElement("div");
+  progressBar.style.cssText = `background: ${progressColor}; height: 100%; width: ${progressWidth}%; transition: width 0.1s ease-out; border-radius: 4px;`;
+
+  progressContainer.appendChild(progressBar);
+
+  // Assemble the OSD
+  contentDiv.appendChild(headerRow);
+  contentDiv.appendChild(progressContainer);
+  osd.appendChild(iconSpan);
+  osd.appendChild(contentDiv);
 
   // Show with animation
   requestAnimationFrame(() => {

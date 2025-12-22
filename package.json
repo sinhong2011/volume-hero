@@ -38,6 +38,7 @@
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@inlang/paraglide-vite": "^1.4.0",
+    "@wxt-dev/auto-icons": "^1.1.0",
     "@wxt-dev/module-solid": "^1.1.4",
     "lefthook": "^2.0.7",
     "typescript": "^5.9.2",

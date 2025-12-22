@@ -2,15 +2,34 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  build-and-release:
-    name: Build & Release
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-and-upload:
+    name: Build & Upload Artifacts
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,18 +51,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update version in package.json
-        run: |
-          bun run --bun -e "
-            const pkg = await Bun.file('package.json').json();
-            pkg.version = '${{ steps.version.outputs.VERSION }}';
-            await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-
       - name: Build Chrome extension
         run: bun run zip
 
@@ -60,50 +67,29 @@ jobs:
 
       - name: Rename artifacts for release
         run: |
-          mv "${{ steps.find-zips.outputs.CHROME_ZIP }}" ".output/volume-hero-${{ steps.version.outputs.VERSION }}-chrome.zip"
-          mv "${{ steps.find-zips.outputs.FIREFOX_ZIP }}" ".output/volume-hero-${{ steps.version.outputs.VERSION }}-firefox.zip"
+          mv "${{ steps.find-zips.outputs.CHROME_ZIP }}" ".output/volume-hero-${{ needs.release-please.outputs.version }}-chrome.zip"
+          mv "${{ steps.find-zips.outputs.FIREFOX_ZIP }}" ".output/volume-hero-${{ needs.release-please.outputs.version }}-firefox.zip"
 
-      - name: Generate release notes
-        id: release-notes
-        run: |
-          echo "## What's Changed" > release-notes.md
-          echo "" >> release-notes.md
-          echo "### Downloads" >> release-notes.md
-          echo "- **Chrome**: \`volume-hero-${{ steps.version.outputs.VERSION }}-chrome.zip\`" >> release-notes.md
-          echo "- **Firefox**: \`volume-hero-${{ steps.version.outputs.VERSION }}-firefox.zip\`" >> release-notes.md
-          echo "" >> release-notes.md
-          echo "### Installation" >> release-notes.md
-          echo "1. Download the appropriate zip file for your browser" >> release-notes.md
-          echo "2. Extract the contents" >> release-notes.md
-          echo "3. Load as unpacked extension in developer mode" >> release-notes.md
-          echo "" >> release-notes.md
-          echo "---" >> release-notes.md
-          echo "_Full changelog: https://github.com/${{ github.repository }}/compare/...v${{ steps.version.outputs.VERSION }}_" >> release-notes.md
-
-      - name: Create GitHub Release
+      - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
-          name: Volume Hero v${{ steps.version.outputs.VERSION }}
-          body_path: release-notes.md
-          draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
-            .output/volume-hero-${{ steps.version.outputs.VERSION }}-chrome.zip
-            .output/volume-hero-${{ steps.version.outputs.VERSION }}-firefox.zip
+            .output/volume-hero-${{ needs.release-please.outputs.version }}-chrome.zip
+            .output/volume-hero-${{ needs.release-please.outputs.version }}-firefox.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Chrome artifact
         uses: actions/upload-artifact@v4
         with:
-          name: volume-hero-chrome-v${{ steps.version.outputs.VERSION }}
+          name: volume-hero-chrome-v${{ needs.release-please.outputs.version }}
           path: .output/chrome-mv3
           retention-days: 90
 
       - name: Upload Firefox artifact
         uses: actions/upload-artifact@v4
         with:
-          name: volume-hero-firefox-v${{ steps.version.outputs.VERSION }}
+          name: volume-hero-firefox-v${{ needs.release-please.outputs.version }}
           path: .output/firefox-mv2
           retention-days: 90
-
