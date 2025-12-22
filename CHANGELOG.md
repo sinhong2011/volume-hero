@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/sinhong2011/volume-hero/compare/v1.1.0...v1.1.1) (2025-12-22)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** use WXT-generated zip file names directly ([76b3647](https://github.com/sinhong2011/volume-hero/commit/76b3647a5ad7d3143c2669f6c23ac9c590d2f11c))
+
 ## [1.1.0](https://github.com/sinhong2011/volume-hero/compare/v1.0.0...v1.1.0) (2025-12-22)
 
 
