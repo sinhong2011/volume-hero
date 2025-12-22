@@ -6,10 +6,7 @@
 // Store AudioContext and GainNode references per media element
 const audioContextMap = new WeakMap<HTMLMediaElement, AudioContext>();
 const gainNodeMap = new WeakMap<HTMLMediaElement, GainNode>();
-const sourceNodeMap = new WeakMap<
-  HTMLMediaElement,
-  MediaElementAudioSourceNode
->();
+const sourceNodeMap = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
 const processedElements = new WeakSet<HTMLMediaElement>();
 
 /**
@@ -27,9 +24,7 @@ export function calculateGainValue(volume: number): number {
  * @param mediaElement - The HTML media element
  * @returns AudioContext instance
  */
-export function createAudioContext(
-  mediaElement: HTMLMediaElement
-): AudioContext {
+export function createAudioContext(mediaElement: HTMLMediaElement): AudioContext {
   let audioContext = audioContextMap.get(mediaElement);
 
   if (!audioContext) {
@@ -46,10 +41,7 @@ export function createAudioContext(
  * @param audioContext - The AudioContext instance
  * @returns GainNode instance
  */
-function setupGainNode(
-  mediaElement: HTMLMediaElement,
-  audioContext: AudioContext
-): GainNode {
+function setupGainNode(mediaElement: HTMLMediaElement, audioContext: AudioContext): GainNode {
   let gainNode = gainNodeMap.get(mediaElement);
   let sourceNode = sourceNodeMap.get(mediaElement);
 
@@ -76,10 +68,7 @@ function setupGainNode(
  * @param mediaElement - The HTML media element
  * @param volumeLevel - Volume level (0.0 to 6.0)
  */
-export function applyVolumeToMedia(
-  mediaElement: HTMLMediaElement,
-  volumeLevel: number
-): void {
+export function applyVolumeToMedia(mediaElement: HTMLMediaElement, volumeLevel: number): void {
   try {
     // Clamp volume to valid range
     const clampedVolume = Math.max(0, Math.min(6, volumeLevel));
@@ -117,11 +106,7 @@ export function applyVolumeToMedia(
     // Mark element as processed
     processedElements.add(mediaElement);
 
-    console.log(
-      `[VolumeHero] Applied volume ${Math.round(
-        clampedVolume * 100
-      )}% to media element`
-    );
+    console.log(`[VolumeHero] Applied volume ${Math.round(clampedVolume * 100)}% to media element`);
   } catch (error) {
     console.error("[VolumeHero] Failed to apply volume:", error);
   }
@@ -201,9 +186,7 @@ export function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
 
   if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
