@@ -57,19 +57,6 @@ jobs:
       - name: Build Firefox extension
         run: bun run zip:firefox
 
-      - name: Find built zip files
-        id: find-zips
-        run: |
-          CHROME_ZIP=$(find .output -name "*chrome*.zip" | head -1)
-          FIREFOX_ZIP=$(find .output -name "*firefox*.zip" | head -1)
-          echo "CHROME_ZIP=$CHROME_ZIP" >> $GITHUB_OUTPUT
-          echo "FIREFOX_ZIP=$FIREFOX_ZIP" >> $GITHUB_OUTPUT
-
-      - name: Rename artifacts for release
-        run: |
-          mv "${{ steps.find-zips.outputs.CHROME_ZIP }}" ".output/volume-hero-${{ needs.release-please.outputs.version }}-chrome.zip"
-          mv "${{ steps.find-zips.outputs.FIREFOX_ZIP }}" ".output/volume-hero-${{ needs.release-please.outputs.version }}-firefox.zip"
-
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
