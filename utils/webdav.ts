@@ -3,6 +3,7 @@
  * Supports syncing settings to WebDAV servers (Nextcloud, ownCloud, Box, etc.)
  */
 
+import { simpleDecrypt, simpleEncrypt } from "./crypto";
 import {
   type ExportData,
   exportAllSettings,
@@ -11,34 +12,6 @@ import {
   saveGlobalSettings,
   type WebDAVConfig,
 } from "./storage";
-
-// Simple encryption for sensitive data (password)
-const ENCRYPTION_KEY = "VolumeHero2024";
-
-function simpleEncrypt(text: string): string {
-  if (!text) return "";
-  let result = "";
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length);
-    result += String.fromCharCode(charCode);
-  }
-  return btoa(result);
-}
-
-function simpleDecrypt(encoded: string): string {
-  if (!encoded) return "";
-  try {
-    const decoded = atob(encoded);
-    let result = "";
-    for (let i = 0; i < decoded.length; i++) {
-      const charCode = decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length);
-      result += String.fromCharCode(charCode);
-    }
-    return result;
-  } catch {
-    return "";
-  }
-}
 
 const SYNC_FILE_NAME = "volumehero-sync.json";
 
@@ -206,25 +179,4 @@ export function encryptPassword(password: string): string {
 
 export function getPasswordLength(encryptedPassword: string): number {
   return simpleDecrypt(encryptedPassword).length;
-}
-
-let autoSyncInterval: ReturnType<typeof setInterval> | null = null;
-
-export function startAutoSync(): void {
-  stopAutoSync();
-  getGlobalSettings().then((settings) => {
-    if (settings.cloudSync.webdav.enabled && settings.cloudSync.webdav.autoSync) {
-      const intervalMs = settings.cloudSync.webdav.syncIntervalMinutes * 60 * 1000;
-      autoSyncInterval = setInterval(() => {
-        performSync("newest").catch(console.error);
-      }, intervalMs);
-    }
-  });
-}
-
-export function stopAutoSync(): void {
-  if (autoSyncInterval) {
-    clearInterval(autoSyncInterval);
-    autoSyncInterval = null;
-  }
 }

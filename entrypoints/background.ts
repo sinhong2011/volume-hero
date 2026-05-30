@@ -3,7 +3,13 @@
  * Handles extension events and tab communication
  */
 
-import { extractDomain, getDomainSettings, saveDomainSettings } from "@/utils/storage";
+import {
+  extractDomain,
+  getDomainSettings,
+  getGlobalSettings,
+  getGlobalSettingsSync,
+  saveDomainSettings,
+} from "@/utils/storage";
 import { startAutoSync } from "@/utils/sync";
 import type { MediaInfo, TabMediaInfo } from "@/utils/volume";
 
@@ -56,14 +62,16 @@ export default defineBackground(() => {
     if (!domain) return;
 
     const settings = await getDomainSettings(domain);
+    const globalSettings = await getGlobalSettings();
+    const stepSize = globalSettings.volumeStepSize;
     let newVolume = settings.volume;
 
     switch (command) {
       case "volume-up":
-        newVolume = Math.min(6, settings.volume + 0.1);
+        newVolume = Math.min(globalSettings.maxVolumeLimit, settings.volume + stepSize);
         break;
       case "volume-down":
-        newVolume = Math.max(0, settings.volume - 0.1);
+        newVolume = Math.max(0, settings.volume - stepSize);
         break;
       case "volume-reset":
         newVolume = 1.0;
@@ -140,6 +148,12 @@ export default defineBackground(() => {
  * Update the extension badge with current volume
  */
 function updateBadge(tabId: number, volume: number): void {
+  const globalSettings = getGlobalSettingsSync();
+  if (!globalSettings.showBadge) {
+    browser.action.setBadgeText({ text: "", tabId });
+    return;
+  }
+
   const percentage = Math.round(volume * 100);
 
   // Only show badge if volume is not 100%

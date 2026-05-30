@@ -90,17 +90,17 @@ export function applyVolumeToMedia(mediaElement: HTMLMediaElement, volumeLevel: 
       // Create/get audio context and gain node
       const audioContext = createAudioContext(mediaElement);
 
-      // Resume audio context if suspended (required by browsers)
+      const gainNode = setupGainNode(mediaElement, audioContext);
+
+      // Set gain value before resuming — value persists on the node and takes effect once the
+      // context starts processing. Resume is requested afterward so audio begins promptly.
+      gainNode.gain.value = clampedVolume;
+
       if (audioContext.state === "suspended") {
         audioContext.resume().catch((err) => {
           console.error("[VolumeHero] Failed to resume AudioContext:", err);
         });
       }
-
-      const gainNode = setupGainNode(mediaElement, audioContext);
-
-      // Set gain value for boost
-      gainNode.gain.value = clampedVolume;
     }
 
     // Mark element as processed

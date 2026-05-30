@@ -124,7 +124,7 @@ const GLOBAL_SETTINGS_KEY = "volumehero:global";
 export const DEFAULT_SETTINGS: DomainSettings = {
   volume: 1.0,
   autoApply: false,
-  lastApplied: Date.now(),
+  lastApplied: 0, // sentinel: 0 means "never saved"; spread sites add Date.now() explicitly
   bassBoost: 0,
   trebleBoost: 0,
 };
@@ -175,9 +175,9 @@ export async function warmCache(domain?: string): Promise<void> {
  */
 export function getDomainSettingsSync(domain: string): DomainSettings {
   if (!domain) {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, lastApplied: Date.now() };
   }
-  return domainSettingsCache.get(domain) ?? { ...DEFAULT_SETTINGS };
+  return domainSettingsCache.get(domain) ?? { ...DEFAULT_SETTINGS, lastApplied: Date.now() };
 }
 
 /**
@@ -244,9 +244,17 @@ function getStorageKey(domain: string): string {
  * @param domain - Domain name
  * @returns Promise resolving to domain settings or default settings
  */
+export async function hasDomainSettings(domain: string): Promise<boolean> {
+  if (!domain) return false;
+  if (domainSettingsCache.has(domain)) return true;
+  const key = getStorageKey(domain);
+  const result = await browser.storage.local.get(key);
+  return !!result[key];
+}
+
 export async function getDomainSettings(domain: string): Promise<DomainSettings> {
   if (!domain) {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, lastApplied: Date.now() };
   }
 
   // Check cache first for fast access
@@ -266,10 +274,10 @@ export async function getDomainSettings(domain: string): Promise<DomainSettings>
       return settings;
     }
 
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, lastApplied: Date.now() };
   } catch (error) {
     console.error("[VolumeHero] Failed to get domain settings:", error);
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, lastApplied: Date.now() };
   }
 }
 
@@ -548,41 +556,47 @@ export async function saveGlobalSettings(settings: Partial<GlobalSettings>): Pro
 // Statistics Tracking
 // ============================================================================
 
+// Serialises all statistics reads/writes to prevent concurrent read-modify-write races.
+let statsWriteQueue: Promise<void> = Promise.resolve();
+
 /**
  * Record a volume adjustment for statistics
  */
-export async function recordVolumeAdjustment(volume: number): Promise<void> {
-  try {
-    const settings = await getGlobalSettings();
-    const stats = { ...settings.statistics };
-
-    stats.totalVolumeAdjustments++;
-    stats.lastUsedDate = Date.now();
-
-    // Round to nearest 10% for histogram
-    const roundedVolume = Math.round(volume * 10) * 10;
-    stats.volumeUsageHistogram[roundedVolume] =
-      (stats.volumeUsageHistogram[roundedVolume] || 0) + 1;
-
-    await saveGlobalSettings({ statistics: stats });
-  } catch (error) {
-    console.error("[VolumeHero] Failed to record volume adjustment:", error);
-  }
+export function recordVolumeAdjustment(volume: number): Promise<void> {
+  statsWriteQueue = statsWriteQueue.then(async () => {
+    try {
+      const settings = await getGlobalSettings();
+      const stats = { ...settings.statistics };
+      stats.totalVolumeAdjustments++;
+      stats.lastUsedDate = Date.now();
+      // Round to nearest 10% for histogram (keys are percentages: 0–600)
+      const roundedVolume = Math.round(volume * 10) * 10;
+      stats.volumeUsageHistogram[roundedVolume] =
+        (stats.volumeUsageHistogram[roundedVolume] || 0) + 1;
+      await saveGlobalSettings({ statistics: stats });
+    } catch (error) {
+      console.error("[VolumeHero] Failed to record volume adjustment:", error);
+    }
+  });
+  return statsWriteQueue;
 }
 
 /**
  * Record a new site being boosted
  */
-export async function recordSiteBoosted(): Promise<void> {
-  try {
-    const settings = await getGlobalSettings();
-    const stats = { ...settings.statistics };
-    stats.totalSitesBoosted++;
-    stats.lastUsedDate = Date.now();
-    await saveGlobalSettings({ statistics: stats });
-  } catch (error) {
-    console.error("[VolumeHero] Failed to record site boosted:", error);
-  }
+export function recordSiteBoosted(): Promise<void> {
+  statsWriteQueue = statsWriteQueue.then(async () => {
+    try {
+      const settings = await getGlobalSettings();
+      const stats = { ...settings.statistics };
+      stats.totalSitesBoosted++;
+      stats.lastUsedDate = Date.now();
+      await saveGlobalSettings({ statistics: stats });
+    } catch (error) {
+      console.error("[VolumeHero] Failed to record site boosted:", error);
+    }
+  });
+  return statsWriteQueue;
 }
 
 /**
@@ -758,8 +772,8 @@ export async function importSettings(
     // Import domain settings
     for (const entry of data.domainSettings) {
       if (!overwrite) {
-        const existing = await getDomainSettings(entry.domain);
-        if (existing.lastApplied !== DEFAULT_SETTINGS.lastApplied) {
+        const hasExisting = await hasDomainSettings(entry.domain);
+        if (hasExisting) {
           skipped++;
           continue;
         }

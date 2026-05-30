@@ -9,12 +9,12 @@ import {
   extractDomain,
   getDomainSettings,
   getGlobalSettings,
-  isDomainBlacklisted,
+  isDomainAllowed,
 } from "@/utils/storage";
 import { applyVolumeToMedia, getAllMediaElements, getAllMediaInfo } from "@/utils/volume";
 
 let currentVolume = 1.0;
-let isInitialized = false;
+let hasManuallyApplied = false;
 let osdEnabled = true;
 let osdDuration = 1500;
 
@@ -32,10 +32,10 @@ export default defineContentScript({
       return;
     }
 
-    // Check if domain is blacklisted
-    const isBlacklisted = await isDomainBlacklisted(domain);
-    if (isBlacklisted) {
-      console.log("[VolumeHero] Domain is blacklisted, skipping initialization");
+    // Check if domain is allowed (respects both blacklist and whitelist)
+    const allowed = await isDomainAllowed(domain);
+    if (!allowed) {
+      console.log("[VolumeHero] Domain is not allowed, skipping initialization");
       return;
     }
 
@@ -59,7 +59,7 @@ export default defineContentScript({
 
     // Setup media detection callback
     onMediaDetected((element) => {
-      if (shouldAutoApply || isInitialized) {
+      if (shouldAutoApply || hasManuallyApplied) {
         applyVolumeToMedia(element, currentVolume);
       }
     });
@@ -90,7 +90,6 @@ function initializeMediaObserver(shouldApply: boolean): void {
 
   // Start observing for new elements
   startObserving();
-  isInitialized = true;
 }
 
 /**
@@ -107,6 +106,7 @@ function handleMessage(
 
   if (message.type === "APPLY_VOLUME" && typeof message.volume === "number") {
     currentVolume = message.volume;
+    hasManuallyApplied = true;
 
     // Apply to all existing media elements
     const mediaElements = getAllMediaElements();

@@ -5,6 +5,7 @@
  */
 
 import { S3Client } from "@bradenmacdonald/s3-lite-client";
+import { simpleDecrypt, simpleEncrypt } from "./crypto";
 import {
   type ExportData,
   exportAllSettings,
@@ -13,34 +14,6 @@ import {
   type S3Config,
   saveGlobalSettings,
 } from "./storage";
-
-// Simple encryption for sensitive data (access keys)
-const ENCRYPTION_KEY = "VolumeHero2024";
-
-function simpleEncrypt(text: string): string {
-  if (!text) return "";
-  let result = "";
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length);
-    result += String.fromCharCode(charCode);
-  }
-  return btoa(result);
-}
-
-function simpleDecrypt(encoded: string): string {
-  if (!encoded) return "";
-  try {
-    const decoded = atob(encoded);
-    let result = "";
-    for (let i = 0; i < decoded.length; i++) {
-      const charCode = decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length);
-      result += String.fromCharCode(charCode);
-    }
-    return result;
-  } catch {
-    return "";
-  }
-}
 
 const SYNC_FILE_NAME = "volumehero-sync.json";
 
