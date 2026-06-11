@@ -15,7 +15,10 @@ export default defineConfig({
     name: "Volume Hero",
     description: "Boost audio/video volume beyond 100% (up to 600%) with per-site memory",
     default_locale: "en",
-    permissions: ["storage", "activeTab", "tabs"],
+    permissions: ["storage", "activeTab", "tabs", "scripting"],
+    // Already implied by the <all_urls> content script; required so the
+    // background can programmatically inject into already-open tabs.
+    host_permissions: ["<all_urls>"],
     browser_specific_settings: {
       gecko: {
         id: "volume-hero@sinhong2011.github.io",

@@ -98,7 +98,7 @@ function initializeMediaObserver(shouldApply: boolean): void {
  * @returns Response or undefined
  */
 function handleMessage(
-  message: { type: string; volume?: number },
+  message: { type: string; volume?: number; showOsd?: boolean },
   _sender: unknown,
   _sendResponse: (response?: unknown) => void
 ): boolean {
@@ -114,8 +114,9 @@ function handleMessage(
       applyVolumeToMedia(element, currentVolume);
     });
 
-    // Show OSD if enabled
-    if (osdEnabled) {
+    // Only show the on-page OSD when explicitly requested (keyboard/global
+    // shortcuts). Popup-driven changes already show the volume in the popup.
+    if (osdEnabled && message.showOsd === true) {
       showVolumeOSD(Math.round(currentVolume * 100), false, osdDuration);
     }
 

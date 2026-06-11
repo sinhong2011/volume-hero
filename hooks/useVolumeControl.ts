@@ -227,11 +227,32 @@ export function useVolumeControl(): VolumeControlState {
             // Show UI immediately (don't wait for storage verification)
             setIsLoading(false);
 
+            // Refresh the toolbar badge for the current tab so it reflects the
+            // active volume as soon as the popup opens.
+            if (activeTab.id) {
+              browser.runtime
+                .sendMessage({
+                  type: "UPDATE_BADGE",
+                  tabId: activeTab.id,
+                  volume: cachedSettings.volume,
+                })
+                .catch(() => {});
+            }
+
             // Verify/update from storage in background (will update UI if different)
             getDomainSettings(currentDomain).then((settings) => {
               // Only update if different from cached values
               if (settings.volume !== cachedSettings.volume) {
                 setVolumeSignal(settings.volume);
+                if (activeTab.id) {
+                  browser.runtime
+                    .sendMessage({
+                      type: "UPDATE_BADGE",
+                      tabId: activeTab.id,
+                      volume: settings.volume,
+                    })
+                    .catch(() => {});
+                }
               }
               if (settings.autoApply !== cachedSettings.autoApply) {
                 setAutoApplySignal(settings.autoApply);
@@ -336,10 +357,17 @@ export function useVolumeControl(): VolumeControlState {
       const activeTab = tabs[0];
 
       if (activeTab?.id) {
+        // showOsd: false — the popup already shows the volume, so don't
+        // duplicate it with the on-page OSD overlay (only shortcuts use OSD).
         await browser.tabs.sendMessage(activeTab.id, {
           type: "APPLY_VOLUME",
           volume: volume(),
+          showOsd: false,
         });
+        // Keep the toolbar badge in sync with popup-driven changes.
+        browser.runtime
+          .sendMessage({ type: "UPDATE_BADGE", tabId: activeTab.id, volume: volume() })
+          .catch(() => {});
       }
     } catch (error) {
       console.error("[VolumeHero] Failed to apply volume to tab:", error);

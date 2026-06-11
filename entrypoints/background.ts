@@ -37,15 +37,37 @@ export default defineBackground(() => {
         console.error("[VolumeHero] Failed to start auto-sync after update:", error);
       });
     }
+
+    // Inject the content script into tabs that were already open before this
+    // install/update, so media controls work without a manual page reload.
+    if (details.reason === "install" || details.reason === "update") {
+      injectContentScriptIntoExistingTabs();
+    }
   });
 
-  // Handle tab updates to re-inject content script if needed
-  browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // When a page finishes loading, we could notify the content script
-    if (changeInfo.status === "complete" && tab.url) {
-      // Content script will auto-initialize based on its own logic
-      console.log(`[VolumeHero] Tab ${tabId} updated: ${tab.url}`);
+  // Cover the case where the browser starts with restored tabs.
+  browser.runtime.onStartup.addListener(() => {
+    injectContentScriptIntoExistingTabs();
+  });
+
+  // Refresh the toolbar badge whenever a tab finishes loading, so the volume
+  // number shows up on sites that auto-apply a boosted volume on page load.
+  browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status !== "complete" || !tab.url) return;
+
+    const domain = extractDomain(tab.url);
+    if (!domain) {
+      browser.action.setBadgeText({ text: "", tabId });
+      return;
     }
+
+    const [settings, globalSettings] = await Promise.all([
+      getDomainSettings(domain),
+      getGlobalSettings(),
+    ]);
+    // Only reflect the saved volume if it actually gets applied on load.
+    const willApply = settings.autoApply || globalSettings.autoApplyAllByDefault;
+    updateBadge(tabId, willApply ? settings.volume : 1.0);
   });
 
   // Handle keyboard commands
@@ -88,9 +110,9 @@ export default defineBackground(() => {
         break;
     }
 
-    // Save and apply the new volume
+    // Save and apply the new volume (shortcuts show the on-page OSD)
     await saveDomainSettings(domain, { volume: newVolume });
-    await applyVolumeToTab(activeTab.id, newVolume);
+    await applyVolumeToTab(activeTab.id, newVolume, true);
 
     // Update badge to show current volume
     updateBadge(activeTab.id, newVolume);
@@ -123,7 +145,8 @@ export default defineBackground(() => {
 
     if (message.type === "UPDATE_BADGE") {
       const { tabId, volume } = message;
-      updateBadge(tabId, volume);
+      // Ensure global settings (showBadge) are loaded before drawing the badge.
+      getGlobalSettings().then(() => updateBadge(tabId, volume));
       return false;
     }
   });
@@ -185,6 +208,48 @@ function updateBadge(tabId: number, volume: number): void {
   browser.action.setBadgeTextColor({ color: "#ffffff", tabId });
 }
 
+/** Path of the built content script, relative to the extension root. */
+const CONTENT_SCRIPT_FILE = "/content-scripts/content.js" as const;
+
+/**
+ * Inject the content script into already-open http/https tabs that don't have
+ * it yet (e.g. tabs that were open before the extension was installed or
+ * updated). Tabs that already respond are skipped to avoid double-injection.
+ */
+async function injectContentScriptIntoExistingTabs(): Promise<void> {
+  if (!browser.scripting?.executeScript) return;
+
+  const tabs = await browser.tabs.query({}).catch((error) => {
+    console.error("[VolumeHero] Failed to query tabs for injection:", error);
+    return [];
+  });
+
+  await Promise.all(
+    tabs.map(async (tab) => {
+      if (!tab.id || !tab.url || !/^https?:\/\//.test(tab.url)) return;
+
+      // Already injected? A successful round-trip means the script is present.
+      try {
+        await browser.tabs.sendMessage(tab.id, { type: "GET_MEDIA_INFO" });
+        return;
+      } catch {
+        // Not present yet — fall through to inject.
+      }
+
+      try {
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [CONTENT_SCRIPT_FILE],
+        });
+        console.log(`[VolumeHero] Injected content script into tab ${tab.id}`);
+      } catch (error) {
+        // Restricted pages (e.g. the web store) reject injection — expected.
+        console.debug(`[VolumeHero] Could not inject into tab ${tab.id}:`, error);
+      }
+    })
+  );
+}
+
 /**
  * Query all tabs and get media info from each
  */
@@ -238,11 +303,12 @@ async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
 /**
  * Apply volume to a specific tab
  */
-async function applyVolumeToTab(tabId: number, volume: number): Promise<boolean> {
+async function applyVolumeToTab(tabId: number, volume: number, showOsd = false): Promise<boolean> {
   try {
     await browser.tabs.sendMessage(tabId, {
       type: "APPLY_VOLUME",
       volume,
+      showOsd,
     });
     return true;
   } catch (error) {
