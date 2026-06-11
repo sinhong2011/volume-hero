@@ -17,10 +17,10 @@ if (root) {
             duration: 2000,
             style: {
               "font-size": "14px",
-              background: "#282a36",
-              color: "#f8f8f2",
-              "border-radius": "8px",
-              border: "1px solid #44475a",
+              background: "var(--color-macos-card)",
+              color: "var(--color-macos-text)",
+              "border-radius": "var(--radius-macos-md)",
+              border: "1px solid var(--color-macos-divider)",
             },
           }}
         />

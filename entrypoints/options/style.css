@@ -1,37 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* macOS Sonoma-inspired Design System using Tailwind CSS v4 */
-@theme {
-  /* macOS Dark Mode Colors */
-  --color-macos-bg: #1c1c1e;
-  --color-macos-sidebar: #2c2c2e;
-  --color-macos-card: #2c2c2e;
-  --color-macos-card-hover: #3a3a3c;
-  --color-macos-divider: #38383a;
-  --color-macos-text: #ffffff;
-  --color-macos-text-secondary: #8e8e93;
-  --color-macos-text-tertiary: #636366;
-  --color-macos-accent: #0a84ff;
-  --color-macos-accent-hover: #409cff;
-  --color-macos-success: #30d158;
-  --color-macos-warning: #ff9f0a;
-  --color-macos-error: #ff453a;
-  --color-macos-toggle-off: #39393d;
-  --color-macos-input: #1c1c1e;
-  --color-macos-input-border: #3d3d3f;
+/* ============================================================
+   Volume Hero — Options Design System
+   System-aware (light + dark). Runtime semantic tokens flip on
+   prefers-color-scheme; @theme maps Tailwind utilities onto
+   them, and the same --macos-* names back the inline styles
+   used in component files.
+   ============================================================ */
 
-  /* macOS Border Radius */
-  --radius-macos-sm: 6px;
-  --radius-macos-md: 10px;
+:root {
+  color-scheme: light dark;
+
+  /* Light mode (default) */
+  --macos-bg: #ecebe6;
+  --macos-sidebar: #f5f3ed;
+  --macos-card: #ffffff;
+  --macos-card-hover: #f4f2ec;
+  --macos-divider: #e4e1d8;
+  --macos-text: #1b1915;
+  --macos-text-secondary: #5f5849;
+  --macos-text-tertiary: #8c8575;
+  --macos-accent: #8f6608;
+  --macos-accent-hover: #774f06;
+  --macos-on-accent: #ffffff;
+  --macos-success: #1a8045;
+  --macos-warning: #9a6109;
+  --macos-error: #c43c17;
+  --macos-toggle-off: #d6d2c7;
+  --macos-input: #ffffff;
+  --macos-input-border: #ddd9cf;
+  --macos-thumb: #ffffff;
+  --macos-thumb-ring: rgba(40, 33, 20, 0.18);
+  --macos-shadow: 0 1px 2px rgba(40, 33, 20, 0.05), 0 6px 18px rgba(40, 33, 20, 0.07);
+  --macos-shadow-lg: 0 12px 36px rgba(40, 33, 20, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --macos-bg: #0f0e0c;
+    --macos-sidebar: #141210;
+    --macos-card: #191816;
+    --macos-card-hover: #211f1c;
+    --macos-divider: #2a2824;
+    --macos-text: #eee8dc;
+    --macos-text-secondary: #9b9182;
+    --macos-text-tertiary: #645d50;
+    --macos-accent: #d4a32e;
+    --macos-accent-hover: #e3b13a;
+    --macos-on-accent: #1a1408;
+    --macos-success: #34c46e;
+    --macos-warning: #e0902a;
+    --macos-error: #e5532c;
+    --macos-toggle-off: #302e29;
+    --macos-input: #0f0e0c;
+    --macos-input-border: #2e2c26;
+    --macos-thumb: #e8e2d0;
+    --macos-thumb-ring: rgba(0, 0, 0, 0.5);
+    --macos-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+    --macos-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.7);
+  }
+}
+
+@theme {
+  --color-macos-bg: var(--macos-bg);
+  --color-macos-sidebar: var(--macos-sidebar);
+  --color-macos-card: var(--macos-card);
+  --color-macos-card-hover: var(--macos-card-hover);
+  --color-macos-divider: var(--macos-divider);
+  --color-macos-text: var(--macos-text);
+  --color-macos-text-secondary: var(--macos-text-secondary);
+  --color-macos-text-tertiary: var(--macos-text-tertiary);
+  --color-macos-accent: var(--macos-accent);
+  --color-macos-accent-hover: var(--macos-accent-hover);
+  --color-macos-success: var(--macos-success);
+  --color-macos-warning: var(--macos-warning);
+  --color-macos-error: var(--macos-error);
+  --color-macos-toggle-off: var(--macos-toggle-off);
+  --color-macos-input: var(--macos-input);
+  --color-macos-input-border: var(--macos-input-border);
+
+  --radius-macos-sm: 5px;
+  --radius-macos-md: 8px;
   --radius-macos-lg: 12px;
 
-  /* macOS Shadows - Dark mode uses deeper shadows */
-  --shadow-macos: 0 2px 8px rgba(0, 0, 0, 0.5);
-  --shadow-macos-lg: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-macos: var(--macos-shadow);
+  --shadow-macos-lg: var(--macos-shadow-lg);
 
-  /* macOS Font Family */
-  --font-macos: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, system-ui, sans-serif;
-  --font-macos-mono: "SF Mono", Monaco, "Cascadia Mono", monospace;
+  --font-macos: "Outfit", -apple-system, system-ui, sans-serif;
+  --font-macos-mono: "DM Mono", "SF Mono", Monaco, monospace;
 }
 
 :root {
@@ -42,7 +99,7 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 body {
@@ -54,53 +111,61 @@ body {
 }
 
 /* ============================================
-   Sidebar Styles
+   Sidebar
    ============================================ */
 .macos-sidebar {
-  @apply bg-macos-sidebar border-r border-macos-divider py-4 px-3 min-w-[220px] max-w-[220px];
+  @apply bg-macos-sidebar border-r border-macos-divider py-5 px-3 min-w-[224px] max-w-[224px];
 }
 
 .macos-sidebar-header {
-  @apply flex items-center gap-3 px-3 pt-2 pb-5 border-b border-macos-divider mb-3;
+  @apply flex items-center gap-3 px-2 pt-1 pb-5 border-b border-macos-divider mb-3;
 }
 
 .macos-sidebar-header-icon {
-  @apply text-[28px] leading-none;
+  @apply rounded-macos-md size-10 shrink-0 shadow-macos;
 }
 
 .macos-sidebar-header-title {
-  @apply text-[15px] font-semibold text-macos-text tracking-tight;
+  @apply text-[15px] font-semibold text-macos-text tracking-tight leading-tight;
 }
 
 .macos-sidebar-header-subtitle {
-  @apply text-[11px] text-macos-text-secondary mt-0.5;
+  @apply text-[12px] text-macos-text-tertiary mt-0.5;
 }
 
 .macos-sidebar-item {
-  @apply flex items-center gap-2.5 py-[7px] px-2.5 rounded-macos-sm text-macos-text text-[13px] font-normal cursor-pointer transition-all duration-150 my-px bg-transparent border-none w-full text-left;
+  @apply flex items-center gap-2.5 py-[7px] px-2.5 rounded-macos-sm text-macos-text-secondary text-[13px] font-medium cursor-pointer transition-colors duration-150 my-0.5 bg-transparent border-none w-full text-left;
 }
 
 .macos-sidebar-item:hover {
-  @apply bg-white/5;
+  @apply bg-macos-card-hover text-macos-text;
 }
 
-.macos-sidebar-item-active {
-  @apply bg-macos-accent! text-white font-medium;
+.macos-sidebar-item:focus-visible {
+  outline: 2px solid var(--macos-accent);
+  outline-offset: -2px;
+}
+
+.macos-sidebar-item-active,
+.macos-sidebar-item-active:hover {
+  @apply bg-macos-accent! font-semibold!;
+  color: var(--macos-on-accent) !important;
 }
 
 .macos-sidebar-item svg {
-  @apply w-[18px] h-[18px] opacity-85;
+  @apply w-[16px] h-[16px] opacity-70;
 }
 
+.macos-sidebar-item:hover svg,
 .macos-sidebar-item-active svg {
   @apply opacity-100;
 }
 
 /* ============================================
-   Content Area Styles
+   Content Area
    ============================================ */
 .macos-content {
-  @apply flex-1 py-8 px-10 bg-macos-bg overflow-y-auto max-h-screen;
+  @apply flex-1 py-9 px-12 bg-macos-bg overflow-y-auto max-h-screen;
 }
 
 .macos-content-header {
@@ -108,34 +173,22 @@ body {
 }
 
 .macos-content-header svg {
-  @apply w-6 h-6 text-macos-text-secondary;
+  @apply w-5 h-5 text-macos-accent;
 }
 
 .macos-content-title {
-  @apply text-[22px] font-semibold tracking-tight text-macos-text;
+  @apply text-[21px] font-semibold tracking-tight text-macos-text;
 }
 
 /* ============================================
-   Card/Section Styles
+   Card / Section
    ============================================ */
 .macos-card {
-  @apply bg-macos-card rounded-macos-lg p-0 mb-4 shadow-macos;
+  @apply bg-macos-card rounded-macos-lg p-0 mb-4 shadow-macos border border-macos-divider overflow-hidden;
 }
 
 .macos-card-item {
-  @apply py-3 px-4 flex items-center justify-between gap-4 transition-colors duration-150;
-}
-
-.macos-card-item:first-child {
-  @apply rounded-t-macos-lg;
-}
-
-.macos-card-item:last-child {
-  @apply rounded-b-macos-lg;
-}
-
-.macos-card-item:only-child {
-  @apply rounded-macos-lg;
+  @apply py-3.5 px-4 flex items-center justify-between gap-4 transition-colors duration-150;
 }
 
 .macos-card-item:not(:last-child) {
@@ -151,26 +204,36 @@ body {
 }
 
 .macos-card-label-title {
-  @apply text-[13px] font-normal text-macos-text m-0;
+  @apply text-[13px] font-medium text-macos-text m-0;
 }
 
 .macos-card-label-description {
-  @apply text-[11px] text-macos-text-secondary mt-0.5 mb-0;
+  @apply text-[11.5px] text-macos-text-secondary mt-0.5 mb-0 leading-relaxed;
 }
 
 /* ============================================
-   Toggle/Switch Styles
+   Toggle / Switch (native button)
    ============================================ */
 .macos-toggle {
-  @apply relative w-[38px] h-[22px] bg-macos-toggle-off rounded-full cursor-pointer transition-colors duration-200 shrink-0 border-none;
+  @apply relative w-[36px] h-[20px] bg-macos-toggle-off rounded-full cursor-pointer shrink-0 border-none;
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .macos-toggle::before {
-  @apply content-[''] absolute top-0.5 left-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200;
+  @apply content-[''] absolute top-0.5 left-0.5 w-[16px] h-[16px] rounded-full;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 3px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.macos-toggle:focus-visible {
+  outline: 2px solid var(--macos-accent);
+  outline-offset: 2px;
 }
 
 .macos-toggle.active {
-  @apply bg-macos-success;
+  @apply bg-macos-accent;
 }
 
 .macos-toggle.active::before {
@@ -178,14 +241,17 @@ body {
 }
 
 /* ============================================
-   Slider Styles
+   Native Range Slider
    ============================================ */
 .macos-slider {
-  @apply appearance-none w-full h-1 bg-macos-toggle-off rounded-sm cursor-pointer;
+  @apply appearance-none w-full h-[4px] bg-macos-toggle-off rounded-full cursor-pointer;
 }
 
 .macos-slider::-webkit-slider-thumb {
-  @apply appearance-none w-[18px] h-[18px] bg-white rounded-full shadow-md cursor-pointer transition-transform duration-100;
+  @apply appearance-none w-[15px] h-[15px] rounded-full cursor-pointer;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .macos-slider::-webkit-slider-thumb:hover {
@@ -196,16 +262,22 @@ body {
   @apply scale-105;
 }
 
+.macos-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 3px color-mix(in oklab, var(--macos-accent) 45%, transparent);
+}
+
 .macos-slider::-moz-range-thumb {
-  @apply w-[18px] h-[18px] bg-white rounded-full border-none shadow-md cursor-pointer;
+  @apply w-[15px] h-[15px] rounded-full border-none cursor-pointer;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
 }
 
 /* ============================================
-   Select/Dropdown Styles
+   Select / Dropdown (native)
    ============================================ */
 .macos-select {
   @apply bg-macos-input border border-macos-input-border rounded-macos-sm py-1.5 pl-2.5 pr-7 text-[13px] text-macos-text cursor-pointer transition-colors duration-150 appearance-none bg-no-repeat;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238e8e93' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
   background-position: right 8px center;
 }
 
@@ -213,12 +285,12 @@ body {
   @apply border-macos-accent;
 }
 
-.macos-select:focus {
-  @apply outline-none border-macos-accent ring-3 ring-macos-accent/25;
+.macos-select:focus-visible {
+  @apply outline-none border-macos-accent ring-2 ring-macos-accent/30;
 }
 
 /* ============================================
-   Input Styles
+   Text Input
    ============================================ */
 .macos-input {
   @apply bg-macos-input border border-macos-input-border rounded-macos-sm py-2 px-3 text-[13px] text-macos-text transition-colors duration-150 w-full;
@@ -228,8 +300,8 @@ body {
   @apply border-macos-accent;
 }
 
-.macos-input:focus {
-  @apply outline-none border-macos-accent ring-3 ring-macos-accent/25;
+.macos-input:focus-visible {
+  @apply outline-none border-macos-accent ring-2 ring-macos-accent/30;
 }
 
 .macos-input::placeholder {
@@ -237,26 +309,32 @@ body {
 }
 
 /* ============================================
-   Button Styles
+   Buttons
    ============================================ */
 .macos-button {
-  @apply bg-macos-card border border-macos-input-border rounded-macos-sm py-1.5 px-3.5 text-[13px] font-normal text-macos-text cursor-pointer transition-all duration-150;
+  @apply bg-macos-card border border-macos-input-border rounded-macos-sm py-1.5 px-3.5 text-[13px] font-medium text-macos-text-secondary cursor-pointer transition-[background-color,color,border-color,transform] duration-150;
 }
 
 .macos-button:hover {
-  @apply bg-macos-card-hover;
+  @apply bg-macos-card-hover text-macos-text;
 }
 
 .macos-button:active {
   @apply scale-[0.98];
 }
 
+.macos-button:focus-visible {
+  @apply outline-none ring-2 ring-macos-accent/30;
+}
+
 .macos-button-primary {
-  @apply bg-macos-accent border-macos-accent text-white font-medium;
+  @apply bg-macos-accent border-macos-accent font-semibold;
+  color: var(--macos-on-accent);
 }
 
 .macos-button-primary:hover {
   @apply bg-macos-accent-hover border-macos-accent-hover;
+  color: var(--macos-on-accent);
 }
 
 .macos-button-danger {
@@ -264,14 +342,22 @@ body {
 }
 
 .macos-button-danger:hover {
-  @apply bg-macos-error/15;
+  @apply bg-macos-error/10 text-macos-error;
+}
+
+.macos-button-secondary {
+  @apply bg-macos-card border-macos-input-border text-macos-text-secondary;
+}
+
+.macos-button-secondary:hover {
+  @apply bg-macos-card-hover text-macos-text;
 }
 
 /* ============================================
-   Utility Classes
+   Utilities
    ============================================ */
 .macos-section-title {
-  @apply text-[11px] font-semibold uppercase tracking-wide text-macos-text-secondary mx-0 mt-0 mb-2 ml-1;
+  @apply text-[10px] font-semibold uppercase tracking-widest text-macos-text-tertiary mx-0 mt-0 mb-2 ml-1;
 }
 
 .macos-divider {
@@ -279,16 +365,17 @@ body {
 }
 
 .macos-badge {
-  @apply inline-flex items-center py-0.5 px-2 bg-macos-accent text-white text-[11px] font-medium rounded-full;
+  @apply inline-flex items-center py-0.5 px-2 bg-macos-accent text-[11px] font-semibold rounded-sm;
+  color: var(--macos-on-accent);
 }
 
 /* ============================================
-   Animation
+   Entrance Animation
    ============================================ */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -297,19 +384,22 @@ body {
 }
 
 .macos-animate-in {
-  @apply animate-[fadeIn_0.2s_ease-out];
+  @apply animate-[fadeIn_0.18s_ease-out];
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .macos-animate-in {
+    animation: none;
+  }
 }
 
 /* ============================================
-   Slider Labels
+   Slider Labels / Value
    ============================================ */
 .macos-slider-labels {
-  @apply flex justify-between text-[10px] text-macos-text-tertiary mt-1.5 px-0.5;
+  @apply flex justify-between text-[10px] font-macos-mono text-macos-text-tertiary mt-1.5 px-0.5;
 }
 
-/* ============================================
-   Slider with Value Display
-   ============================================ */
 .macos-slider-container {
   @apply py-2;
 }
@@ -319,52 +409,63 @@ body {
 }
 
 .macos-slider-value {
-  @apply text-[13px] font-medium text-macos-accent tabular-nums;
+  @apply text-[13px] font-medium font-macos-mono text-macos-accent tabular-nums;
 }
 
 /* ============================================
-   Step/Chip Buttons
+   Chip Buttons
    ============================================ */
 .macos-chip-group {
   @apply flex gap-1.5 flex-wrap;
 }
 
 .macos-chip {
-  @apply bg-macos-input border border-macos-input-border rounded-macos-sm py-1 px-3 text-xs text-macos-text cursor-pointer transition-all duration-150;
+  @apply bg-macos-card border border-macos-input-border rounded-macos-sm py-1 px-3 text-xs font-medium text-macos-text-secondary cursor-pointer transition-colors duration-150;
 }
 
 .macos-chip:hover {
-  @apply bg-macos-card-hover;
+  @apply bg-macos-card-hover text-macos-text;
 }
 
 .macos-chip-active {
-  @apply bg-macos-accent border-macos-accent text-white;
+  @apply bg-macos-accent border-macos-accent font-semibold;
+  color: var(--macos-on-accent);
 }
 
 /* ============================================
-   Keyboard Shortcut Display
+   Keyboard Shortcut Keys
    ============================================ */
 .macos-kbd {
   @apply inline-flex items-center gap-1 bg-macos-input border border-macos-input-border rounded py-1 px-2 text-xs font-macos-mono text-macos-text-secondary shadow-sm;
 }
 
 /* ============================================
-   Ark UI Switch Component Styles
+   Ark UI Switch
    ============================================ */
 [data-scope="switch"][data-part="root"] {
   @apply flex items-center gap-3 cursor-pointer;
 }
 
 [data-scope="switch"][data-part="control"] {
-  @apply relative w-[38px] h-[22px] bg-macos-toggle-off rounded-full shrink-0 transition-colors duration-200;
+  @apply relative w-[36px] h-[20px] bg-macos-toggle-off rounded-full shrink-0;
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+[data-scope="switch"][data-part="root"]:focus-within [data-part="control"] {
+  outline: 2px solid var(--macos-accent);
+  outline-offset: 2px;
 }
 
 [data-scope="switch"][data-part="control"][data-state="checked"] {
-  @apply bg-macos-success;
+  @apply bg-macos-accent;
 }
 
 [data-scope="switch"][data-part="thumb"] {
-  @apply absolute top-0.5 left-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-md transition-transform duration-200;
+  @apply absolute top-0.5 left-0.5 w-[16px] h-[16px] rounded-full;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 3px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-scope="switch"][data-part="thumb"][data-state="checked"] {
@@ -376,7 +477,7 @@ body {
 }
 
 /* ============================================
-   Ark UI Slider Component Styles
+   Ark UI Slider
    ============================================ */
 [data-scope="slider"][data-part="root"] {
   @apply w-full;
@@ -387,15 +488,18 @@ body {
 }
 
 [data-scope="slider"][data-part="track"] {
-  @apply w-full h-1 bg-macos-toggle-off rounded-sm;
+  @apply w-full h-[4px] bg-macos-toggle-off rounded-full;
 }
 
 [data-scope="slider"][data-part="range"] {
-  @apply h-full bg-macos-accent rounded-sm;
+  @apply h-full bg-macos-accent rounded-full;
 }
 
 [data-scope="slider"][data-part="thumb"] {
-  @apply w-[18px] h-[18px] bg-white rounded-full shadow-md cursor-pointer;
+  @apply w-[15px] h-[15px] rounded-full cursor-pointer;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-scope="slider"][data-part="thumb"]:hover {
@@ -406,12 +510,17 @@ body {
   @apply scale-105;
 }
 
+[data-scope="slider"][data-part="thumb"]:focus-visible {
+  outline: none;
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 3px color-mix(in oklab, var(--macos-accent) 45%, transparent);
+}
+
 [data-scope="slider"][data-part="value-text"] {
-  @apply text-[13px] font-medium text-macos-accent tabular-nums;
+  @apply text-[13px] font-medium font-macos-mono text-macos-accent tabular-nums;
 }
 
 /* ============================================
-   Ark UI Select Component Styles
+   Ark UI Select
    ============================================ */
 [data-scope="select"][data-part="trigger"] {
   @apply inline-flex items-center justify-between gap-2 bg-macos-input border border-macos-input-border rounded-macos-sm py-1.5 pl-2.5 pr-2 text-[13px] text-macos-text cursor-pointer transition-colors duration-150 min-w-[120px];
@@ -421,12 +530,12 @@ body {
   @apply border-macos-accent;
 }
 
-[data-scope="select"][data-part="trigger"]:focus {
-  @apply outline-none border-macos-accent ring-3 ring-macos-accent/25;
+[data-scope="select"][data-part="trigger"]:focus-visible {
+  @apply outline-none border-macos-accent ring-2 ring-macos-accent/30;
 }
 
 [data-scope="select"][data-part="indicator"] {
-  @apply text-macos-text-secondary transition-transform duration-200;
+  @apply text-macos-text-tertiary transition-transform duration-200;
 }
 
 [data-scope="select"][data-part="indicator"][data-state="open"] {
@@ -442,7 +551,8 @@ body {
 }
 
 [data-scope="select"][data-part="item"][data-highlighted] {
-  @apply bg-macos-accent text-white;
+  @apply bg-macos-accent;
+  color: var(--macos-on-accent);
 }
 
 [data-scope="select"][data-part="item"][data-state="checked"] {
@@ -453,19 +563,19 @@ body {
   @apply text-macos-accent;
 }
 
-[data-scope="select"][data-part="item"][data-highlighted] [data-scope="select"][data-part="item-indicator"] {
-  @apply text-white;
+[data-scope="select"][data-part="item"][data-highlighted] [data-part="item-indicator"] {
+  color: var(--macos-on-accent);
 }
 
 /* ============================================
-   Ark UI Tooltip Component Styles
+   Ark UI Tooltip
    ============================================ */
 [data-scope="tooltip"][data-part="content"] {
   @apply bg-macos-card border border-macos-divider rounded-macos-sm shadow-macos-lg py-2 px-3 text-xs text-macos-text z-50;
 }
 
 /* ============================================
-   Loading Spinner (replaces DaisyUI loading)
+   Spinners
    ============================================ */
 .macos-spinner {
   @apply w-5 h-5 border-2 border-macos-text-tertiary border-t-macos-accent rounded-full animate-spin;
@@ -475,58 +585,44 @@ body {
   @apply w-8 h-8;
 }
 
+.macos-spinner-sm {
+  @apply w-4 h-4 border-2 border-macos-text-tertiary/30 border-t-macos-accent rounded-full animate-spin;
+}
+
 /* ============================================
-   Alert Styles (replaces DaisyUI alert)
+   Alerts
    ============================================ */
 .macos-alert {
   @apply flex items-center gap-3 py-3 px-4 rounded-macos-md text-[13px];
 }
 
 .macos-alert-warning {
-  @apply bg-macos-warning/15 text-macos-warning;
+  @apply bg-macos-warning/10 text-macos-warning border border-macos-warning/25;
 }
 
 .macos-alert-error {
-  @apply bg-macos-error/15 text-macos-error;
+  @apply bg-macos-error/10 text-macos-error border border-macos-error/25;
 }
 
 .macos-alert-success {
-  @apply bg-macos-success/15 text-macos-success;
+  @apply bg-macos-success/10 text-macos-success border border-macos-success/25;
 }
 
 .macos-alert-info {
-  @apply bg-macos-accent/15 text-macos-accent;
+  @apply bg-macos-accent/10 text-macos-accent border border-macos-accent/25;
 }
 
 /* ============================================
-   Badge Styles (replaces DaisyUI badge)
+   Badges
    ============================================ */
 .macos-badge-success {
-  @apply bg-macos-success text-white;
+  @apply bg-macos-success/15 text-macos-success border border-macos-success/30 rounded-sm px-1.5 py-0.5 text-xs;
 }
 
 .macos-badge-error {
-  @apply bg-macos-error text-white;
+  @apply bg-macos-error/15 text-macos-error border border-macos-error/30 rounded-sm px-1.5 py-0.5 text-xs;
 }
 
 .macos-badge-warning {
-  @apply bg-macos-warning text-white;
-}
-
-/* ============================================
-   Small Spinner (for buttons)
-   ============================================ */
-.macos-spinner-sm {
-  @apply w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
-}
-
-/* ============================================
-   Secondary Button Style
-   ============================================ */
-.macos-button-secondary {
-  @apply bg-macos-card border-macos-input-border text-macos-text;
-}
-
-.macos-button-secondary:hover {
-  @apply bg-macos-card-hover;
+  @apply bg-macos-warning/15 text-macos-warning border border-macos-warning/30 rounded-sm px-1.5 py-0.5 text-xs;
 }

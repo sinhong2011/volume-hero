@@ -1,29 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* macOS Sonoma-inspired Design System for Popup */
+/* ============================================================
+   Volume Hero — Popup Design System
+   System-aware (light + dark) warm-audio aesthetic.
+   Runtime semantic tokens live in :root and flip on
+   prefers-color-scheme; @theme maps Tailwind utilities onto
+   them so every existing class name keeps working.
+   ============================================================ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Light mode (default) */
+  --macos-bg: #ecebe6;
+  --macos-card: #ffffff;
+  --macos-card-hover: #f4f2ec;
+  --macos-divider: #e4e1d8;
+  --macos-text: #1b1915;
+  --macos-text-secondary: #5f5849;
+  --macos-text-tertiary: #8c8575;
+  --macos-accent: #8f6608;
+  --macos-accent-hover: #774f06;
+  --macos-on-accent: #ffffff;
+  --macos-success: #1a8045;
+  --macos-warning: #9a6109;
+  --macos-error: #c43c17;
+  --macos-toggle-off: #d6d2c7;
+  --macos-input: #ffffff;
+  --macos-input-border: #ddd9cf;
+  --macos-thumb: #ffffff;
+  --macos-thumb-ring: rgba(40, 33, 20, 0.18);
+  --macos-shadow: 0 1px 2px rgba(40, 33, 20, 0.06), 0 6px 18px rgba(40, 33, 20, 0.08);
+  --macos-shadow-lg: 0 12px 36px rgba(40, 33, 20, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --macos-bg: #100f0d;
+    --macos-card: #1a1916;
+    --macos-card-hover: #232220;
+    --macos-divider: #2c2a26;
+    --macos-text: #ede7db;
+    --macos-text-secondary: #9b9182;
+    --macos-text-tertiary: #645d50;
+    --macos-accent: #d4a32e;
+    --macos-accent-hover: #e3b13a;
+    --macos-on-accent: #1a1408;
+    --macos-success: #34c46e;
+    --macos-warning: #e0902a;
+    --macos-error: #e5532c;
+    --macos-toggle-off: #322f2a;
+    --macos-input: #100f0d;
+    --macos-input-border: #2e2c26;
+    --macos-thumb: #e8e2d0;
+    --macos-thumb-ring: rgba(0, 0, 0, 0.5);
+    --macos-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    --macos-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.75);
+  }
+}
+
 @theme {
-  --color-macos-bg: #1c1c1e;
-  --color-macos-card: #2c2c2e;
-  --color-macos-card-hover: #3a3a3c;
-  --color-macos-divider: #38383a;
-  --color-macos-text: #ffffff;
-  --color-macos-text-secondary: #8e8e93;
-  --color-macos-text-tertiary: #636366;
-  --color-macos-accent: #0a84ff;
-  --color-macos-accent-hover: #409cff;
-  --color-macos-success: #30d158;
-  --color-macos-warning: #ff9f0a;
-  --color-macos-error: #ff453a;
-  --color-macos-toggle-off: #39393d;
-  --color-macos-input: #1c1c1e;
-  --color-macos-input-border: #3d3d3f;
-  --radius-macos-sm: 6px;
-  --radius-macos-md: 10px;
+  --color-macos-bg: var(--macos-bg);
+  --color-macos-card: var(--macos-card);
+  --color-macos-card-hover: var(--macos-card-hover);
+  --color-macos-divider: var(--macos-divider);
+  --color-macos-text: var(--macos-text);
+  --color-macos-text-secondary: var(--macos-text-secondary);
+  --color-macos-text-tertiary: var(--macos-text-tertiary);
+  --color-macos-accent: var(--macos-accent);
+  --color-macos-accent-hover: var(--macos-accent-hover);
+  --color-macos-success: var(--macos-success);
+  --color-macos-warning: var(--macos-warning);
+  --color-macos-error: var(--macos-error);
+  --color-macos-toggle-off: var(--macos-toggle-off);
+  --color-macos-input: var(--macos-input);
+  --color-macos-input-border: var(--macos-input-border);
+
+  --radius-macos-sm: 5px;
+  --radius-macos-md: 8px;
   --radius-macos-lg: 12px;
-  --shadow-macos: 0 2px 8px rgba(0, 0, 0, 0.5);
-  --shadow-macos-lg: 0 4px 16px rgba(0, 0, 0, 0.6);
-  --font-macos: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, system-ui, sans-serif;
-  --font-macos-mono: "SF Mono", Monaco, Consolas, monospace;
+
+  --shadow-macos: var(--macos-shadow);
+  --shadow-macos-lg: var(--macos-shadow-lg);
+
+  --font-macos: "Outfit", -apple-system, system-ui, sans-serif;
+  --font-macos-mono: "DM Mono", "SF Mono", Monaco, monospace;
 }
 
 :root {
@@ -43,21 +105,19 @@ body {
   @apply m-0 min-w-[320px] bg-macos-bg relative;
 }
 
-/* Ensure popup has proper dimensions */
 #root {
   @apply flex justify-center items-start relative bg-macos-bg;
 }
 
-/* Solid Toast container positioning for popup */
 [data-solid-toast] {
   z-index: 9999 !important;
 }
 
 /* ============================================
-   Popup Card Styles
+   Popup Card
    ============================================ */
 .popup-card {
-  @apply bg-macos-bg w-80 rounded-macos-lg shadow-macos-lg;
+  @apply bg-macos-bg w-80 rounded-macos-lg;
 }
 
 .popup-card-body {
@@ -65,18 +125,27 @@ body {
 }
 
 .popup-card-title {
-  @apply text-lg font-semibold text-macos-text;
+  @apply text-[15px] font-semibold text-macos-text tracking-tight;
 }
 
 /* ============================================
-   Button Styles
+   Buttons
    ============================================ */
 .popup-btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-macos-sm text-[13px] font-medium transition-all duration-150 cursor-pointer;
+  @apply inline-flex items-center justify-center gap-2 rounded-macos-sm text-[13px] font-medium transition-[background-color,color,transform] duration-150 cursor-pointer;
+}
+
+.popup-btn:active {
+  @apply scale-[0.94];
+}
+
+.popup-btn:focus-visible {
+  outline: 2px solid var(--macos-accent);
+  outline-offset: 2px;
 }
 
 .popup-btn-ghost {
-  @apply bg-transparent text-macos-text hover:bg-macos-card-hover;
+  @apply bg-transparent text-macos-text-secondary hover:text-macos-text hover:bg-macos-card-hover;
 }
 
 .popup-btn-sm {
@@ -92,18 +161,25 @@ body {
 }
 
 .popup-btn-soft {
-  @apply bg-macos-input border border-macos-input-border text-macos-text hover:bg-macos-card-hover;
+  @apply bg-macos-card border border-macos-input-border text-macos-text-secondary hover:text-macos-text hover:bg-macos-card-hover;
 }
 
 /* ============================================
-   Toggle/Switch Styles
+   Toggle / Switch (Ark UI)
    ============================================ */
 [data-scope="switch"][data-part="root"] {
   @apply flex items-center gap-3 cursor-pointer;
 }
 
 [data-scope="switch"][data-part="control"] {
-  @apply relative w-[34px] h-[20px] bg-macos-toggle-off rounded-full shrink-0 transition-colors duration-200;
+  @apply relative w-[34px] h-[20px] bg-macos-toggle-off rounded-full shrink-0;
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+[data-scope="switch"][data-part="root"]:focus-within [data-part="control"] {
+  outline: 2px solid var(--macos-accent);
+  outline-offset: 2px;
 }
 
 [data-scope="switch"][data-part="control"][data-state="checked"] {
@@ -111,7 +187,10 @@ body {
 }
 
 [data-scope="switch"][data-part="thumb"] {
-  @apply absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200;
+  @apply absolute top-0.5 left-0.5 w-4 h-4 rounded-full;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 3px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-scope="switch"][data-part="thumb"][data-state="checked"] {
@@ -123,7 +202,7 @@ body {
 }
 
 /* ============================================
-   Slider Styles
+   Sliders (Ark UI)
    ============================================ */
 [data-scope="slider"][data-part="root"] {
   @apply flex-1;
@@ -134,11 +213,12 @@ body {
 }
 
 [data-scope="slider"][data-part="track"] {
-  @apply w-full h-1 bg-macos-toggle-off rounded-sm;
+  @apply w-full h-[4px] bg-macos-toggle-off rounded-full;
 }
 
 [data-scope="slider"][data-part="range"] {
-  @apply h-full rounded-sm;
+  @apply h-full rounded-full;
+  transition: background-color 0.2s ease;
 }
 
 [data-scope="slider"][data-part="range"][data-volume-level="safe"] {
@@ -154,15 +234,82 @@ body {
 }
 
 [data-scope="slider"][data-part="thumb"] {
-  @apply w-[18px] h-[18px] bg-white rounded-full shadow-md cursor-pointer;
+  @apply w-[15px] h-[15px] rounded-full cursor-pointer;
+  background-color: var(--macos-thumb);
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 0.5px var(--macos-thumb-ring);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-scope="slider"][data-part="thumb"]:hover {
   @apply scale-110;
 }
 
+[data-scope="slider"][data-part="thumb"]:active {
+  @apply scale-105;
+}
+
+[data-scope="slider"][data-part="thumb"]:focus-visible {
+  outline: none;
+  box-shadow: 0 1px 4px var(--macos-thumb-ring), 0 0 0 3px color-mix(in oklab, var(--macos-accent) 45%, transparent);
+}
+
 /* ============================================
-   Dropdown/Tooltip Styles
+   Combined Level-Meter Slider (main volume)
+   A single segmented control that is both the VU
+   meter and the draggable slider.
+   ============================================ */
+.popup-volume-slider [data-scope="slider"][data-part="control"] {
+  @apply h-[18px];
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="track"] {
+  height: 13px;
+  border-radius: 4px;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--macos-toggle-off) 0 11px,
+    transparent 11px 14px
+  );
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="range"] {
+  height: 13px;
+  border-radius: 4px;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(90deg, currentColor 0 11px, transparent 11px 14px);
+  transition: color 0.2s ease;
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="range"][data-volume-level="safe"] {
+  color: var(--macos-success);
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="range"][data-volume-level="warning"] {
+  color: var(--macos-warning);
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="range"][data-volume-level="danger"] {
+  color: var(--macos-error);
+}
+
+.popup-volume-slider [data-scope="slider"][data-part="thumb"] {
+  @apply w-[18px] h-[18px];
+}
+
+/* ============================================
+   Setting Row (auto-apply)
+   ============================================ */
+.popup-setting-row {
+  @apply flex items-center px-3.5 py-3 rounded-macos-md bg-macos-card border border-macos-divider transition-colors duration-150;
+}
+
+.popup-setting-row:hover {
+  @apply bg-macos-card-hover;
+}
+
+/* ============================================
+   Dropdown / Tooltip (Ark UI)
    ============================================ */
 [data-scope="tooltip"][data-part="content"],
 .popup-dropdown {
@@ -170,32 +317,32 @@ body {
 }
 
 /* ============================================
-   Keyboard Shortcut Display
+   Keyboard Shortcut Keys
    ============================================ */
 .popup-kbd {
   @apply inline-flex items-center gap-0.5 bg-macos-input border border-macos-input-border rounded py-0.5 px-1.5 text-[10px] font-macos-mono text-macos-text-secondary;
 }
 
 /* ============================================
-   Alert Styles
+   Alerts
    ============================================ */
 .popup-alert {
   @apply flex items-center gap-2 py-2 px-3 rounded-macos-md text-xs;
 }
 
 .popup-alert-warning {
-  @apply bg-macos-warning/15 text-macos-warning;
+  @apply bg-macos-warning/10 text-macos-warning border border-macos-warning/25;
 }
 
 .popup-alert-error {
-  @apply bg-macos-error/15 text-macos-error;
+  @apply bg-macos-error/10 text-macos-error border border-macos-error/25;
 }
 
 /* ============================================
-   Divider Styles
+   Section Divider with Label
    ============================================ */
 .popup-divider {
-  @apply flex items-center gap-2 my-2 text-xs text-macos-text-tertiary;
+  @apply flex items-center gap-2 my-3 text-[11px] font-medium tracking-wide uppercase text-macos-text-tertiary;
 }
 
 .popup-divider::before,
@@ -204,10 +351,25 @@ body {
 }
 
 /* ============================================
-   Tab Card Styles
+   Tab Card
    ============================================ */
 .popup-tab-card {
-  @apply bg-macos-input rounded-macos-md px-3 py-2;
+  @apply bg-macos-card rounded-macos-md px-3 py-2.5 border border-macos-divider transition-colors duration-150;
+}
+
+.popup-tab-card:hover {
+  @apply border-macos-input-border bg-macos-card-hover;
+}
+
+.popup-tab-card-active {
+  border-color: color-mix(in oklab, var(--macos-accent) 45%, var(--macos-divider));
+  box-shadow: inset 2px 0 0 var(--macos-accent);
+}
+
+.popup-tab-badge {
+  @apply inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide;
+  background-color: color-mix(in oklab, var(--macos-accent) 15%, transparent);
+  color: var(--macos-accent);
 }
 
 /* ============================================
