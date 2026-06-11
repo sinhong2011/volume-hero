@@ -52,3 +52,50 @@ coverage
 # Misc
 *.local
 *.tsbuildinfo
+.gstack/
+.store-assets/
+
+# Package manager caches & debug
+.pnpm-debug.log*
+.pnpm-store/
+
+# Bun
+.bun/
+
+# Tooling caches
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+.turbo/
+
+# Test runners / coverage caches
+.vitest/
+
+# Extension build artifacts
+web-ext-artifacts/
+*.crx
+*.xpi
+*.zip
+*.pem
+*.key
+
+# Misc build output
+out/
+
+# Playwright artifacts
+.playwright/
+.playwright-mcp/
+playwright-report/
+playwright-report-*/
+test-results/
+playwright-report.zip
+trace/
+
+# Model Context Protocol / MCP artifacts
+.mcp/
+mcp/
+mcp-logs/
+mcp-*.json
+
+
