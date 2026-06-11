@@ -5,16 +5,13 @@
 
 import { performS3Sync, testS3Connection, updateS3SyncStatus } from "./s3";
 import { getGlobalSettings } from "./storage";
-import {
-  performSync as performWebDAVSync,
-  testWebDAVConnection,
-  updateSyncStatus as updateWebDAVSyncStatus,
-} from "./webdav";
+import { performWebDAVSync, testWebDAVConnection, updateWebDAVSyncStatus } from "./webdav";
 
 export interface SyncResult {
   success: boolean;
   message: string;
   timestamp?: number;
+  conflict?: { local: import("./storage").ExportData; remote: import("./storage").ExportData };
 }
 
 /**

@@ -17,7 +17,7 @@ import {
 
 const SYNC_FILE_NAME = "volumehero-sync.json";
 
-export interface SyncResult {
+interface SyncResult {
   success: boolean;
   message: string;
   timestamp?: number;

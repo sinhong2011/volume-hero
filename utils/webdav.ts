@@ -15,7 +15,7 @@ import {
 
 const SYNC_FILE_NAME = "volumehero-sync.json";
 
-export interface SyncResult {
+interface SyncResult {
   success: boolean;
   message: string;
   timestamp?: number;
@@ -138,7 +138,7 @@ export async function syncWithWebDAV(
   }
 }
 
-export async function updateSyncStatus(
+export async function updateWebDAVSyncStatus(
   status: "success" | "error" | "syncing",
   errorMessage?: string
 ): Promise<void> {
@@ -156,19 +156,19 @@ export async function updateSyncStatus(
   });
 }
 
-export async function performSync(
+export async function performWebDAVSync(
   conflictResolution: "local" | "remote" | "newest" = "newest"
 ): Promise<SyncResult> {
   const settings = await getGlobalSettings();
   if (!settings.cloudSync.webdav.enabled) {
     return { success: false, message: "WebDAV sync is not enabled" };
   }
-  await updateSyncStatus("syncing");
+  await updateWebDAVSyncStatus("syncing");
   const result = await syncWithWebDAV(settings.cloudSync.webdav, conflictResolution);
   if (result.success) {
-    await updateSyncStatus("success");
+    await updateWebDAVSyncStatus("success");
   } else {
-    await updateSyncStatus("error", result.message);
+    await updateWebDAVSyncStatus("error", result.message);
   }
   return result;
 }
