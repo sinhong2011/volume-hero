@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7d35a"/>
+      <stop offset="0.5" stop-color="#e0aa24"/>
+      <stop offset="1" stop-color="#c6850c"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="sq"><rect x="0" y="0" width="1024" height="1024" rx="228"/></clipPath>
+    <filter id="ds" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#5c3d02" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#sq)">
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1024" height="600" fill="url(#sheen)"/>
+  </g>
+  <!-- mark: volume + boost (3 arcs), scale 27, translate (118,196) -->
+  <g transform="translate(143,212) scale(25)" filter="url(#ds)" fill="none"
+     stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#ffffff" stroke-width="1.4"/>
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    <path d="M22.6 1.4a15 15 0 0 1 0 21.2"/>
+  </g>
+</svg>
