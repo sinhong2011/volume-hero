@@ -21,7 +21,8 @@ export function MacSlider(props: MacSliderProps) {
   const step = () => props.step ?? 1;
 
   const handleChange = (details: { value: number[] }) => {
-    props.onChange?.(details.value[0]);
+    const next = details.value[0];
+    if (next !== undefined) props.onChange?.(next);
   };
 
   return (

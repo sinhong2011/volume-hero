@@ -283,7 +283,10 @@ function App() {
 
               <Slider.Root
                 value={[volumePercentage()]}
-                onValueChange={(e) => setVolume(e.value[0] / 100)}
+                onValueChange={(e) => {
+                  const next = e.value[0];
+                  if (next !== undefined) setVolume(next / 100);
+                }}
                 min={0}
                 max={maxVolumePercent()}
                 step={1}
@@ -423,7 +426,10 @@ function App() {
 
                           <Slider.Root
                             value={[tabPct()]}
-                            onValueChange={(e) => setTab(e.value[0] / 100)}
+                            onValueChange={(e) => {
+                              const next = e.value[0];
+                              if (next !== undefined) setTab(next / 100);
+                            }}
                             min={0}
                             max={tabMax()}
                             step={1}

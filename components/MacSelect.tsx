@@ -29,7 +29,10 @@ export function MacSelect(props: MacSelectProps) {
     <Select.Root
       collection={collection()}
       value={props.value ? [props.value] : []}
-      onValueChange={(e) => props.onChange?.(e.value[0])}
+      onValueChange={(e) => {
+        const next = e.value[0];
+        if (next !== undefined) props.onChange?.(next);
+      }}
       class={props.class}
     >
       <Select.Control>
