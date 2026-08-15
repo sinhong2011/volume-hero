@@ -1,4 +1,4 @@
-import { paraglide } from "@inlang/paraglide-vite";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import solid from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
@@ -78,7 +78,7 @@ export default defineConfig({
       solidCompat(),
       solid(),
       tailwindcss(),
-      paraglide({
+      paraglideVitePlugin({
         project: "./project.inlang",
         outdir: "./src/paraglide",
       }),

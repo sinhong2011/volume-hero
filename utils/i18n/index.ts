@@ -1,6 +1,6 @@
 export {
   changeLanguage,
-  getLocale,
+  getCurrentLocale,
   initI18n,
   type MessageKey,
   type Messages,

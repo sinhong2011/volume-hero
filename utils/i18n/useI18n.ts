@@ -2,19 +2,19 @@ import { type Accessor, createSignal } from "solid-js";
 import { onMount } from "@/compat/solid-js";
 import * as m from "@/src/paraglide/messages";
 import {
-  type AvailableLanguageTag,
-  availableLanguageTags,
-  isAvailableLanguageTag,
-  languageTag,
-  setLanguageTag,
+  getLocale,
+  isLocale,
+  type Locale,
+  locales,
+  overwriteGetLocale,
 } from "@/src/paraglide/runtime";
 import { getGlobalSettings, getGlobalSettingsSync, saveGlobalSettings } from "@/utils/storage";
 
 // Re-export types for compatibility
-export type SupportedLocale = AvailableLanguageTag;
+export type SupportedLocale = Locale;
 
 // Locale display names
-export const SUPPORTED_LOCALES: { code: AvailableLanguageTag; name: string }[] = [
+export const SUPPORTED_LOCALES: { code: Locale; name: string }[] = [
   { code: "en", name: "English" },
   { code: "zh-CN", name: "简体中文" },
   { code: "zh-TW", name: "繁體中文" },
@@ -23,20 +23,23 @@ export const SUPPORTED_LOCALES: { code: AvailableLanguageTag; name: string }[] =
 ];
 
 // Global reactive state for language - initialized from sync cache for instant display
-const getInitialLocale = (): AvailableLanguageTag => {
+const getInitialLocale = (): Locale => {
   // Try to get cached language setting synchronously for instant display
   const cachedSettings = getGlobalSettingsSync();
-  if (cachedSettings.language && isAvailableLanguageTag(cachedSettings.language)) {
+  if (cachedSettings.language && isLocale(cachedSettings.language)) {
     return cachedSettings.language;
   }
-  return languageTag();
+  return getLocale();
 };
 
-const [currentLocale, setCurrentLocale] = createSignal<AvailableLanguageTag>(getInitialLocale());
+const [currentLocale, setCurrentLocale] = createSignal<Locale>(getInitialLocale());
 let initialized = false;
 
-// Set Paraglide to use a getter function that returns our reactive signal
-setLanguageTag(() => currentLocale());
+// Point Paraglide at the reactive signal. Paraglide 2 replaced v1's
+// `setLanguageTag(getter)` with `overwriteGetLocale`, which serves the same
+// purpose: every message lookup reads the signal, so changing it re-renders
+// the UI instead of requiring a reload.
+overwriteGetLocale(() => currentLocale());
 
 /**
  * Initialize the i18n system by loading saved language preference
@@ -48,7 +51,7 @@ export async function initI18n(): Promise<void> {
   try {
     const settings = await getGlobalSettings();
     const locale = settings.language;
-    if (locale && isAvailableLanguageTag(locale)) {
+    if (locale && isLocale(locale)) {
       // Only update if different from current (already set from cache)
       if (currentLocale() !== locale) {
         setCurrentLocale(locale);
@@ -64,8 +67,8 @@ export async function initI18n(): Promise<void> {
 /**
  * Change the current language and save to storage
  */
-export async function changeLanguage(locale: AvailableLanguageTag): Promise<void> {
-  if (!availableLanguageTags.includes(locale)) {
+export async function changeLanguage(locale: Locale): Promise<void> {
+  if (!locales.includes(locale)) {
     console.warn(`[VolumeHero] Unsupported locale: ${locale}`);
     return;
   }
@@ -77,7 +80,7 @@ export async function changeLanguage(locale: AvailableLanguageTag): Promise<void
 /**
  * Get the current locale (accessor)
  */
-export function getLocale(): AvailableLanguageTag {
+export function getCurrentLocale(): Locale {
   return currentLocale();
 }
 
@@ -102,7 +105,7 @@ export function useI18n() {
 
   return {
     m,
-    locale: currentLocale as Accessor<AvailableLanguageTag>,
+    locale: currentLocale as Accessor<Locale>,
     setLocale: changeLanguage,
   };
 }
