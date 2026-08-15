@@ -4,7 +4,7 @@
  * Uses s3-lite-client for lightweight, browser-optimized S3 operations
  */
 
-import { S3Client } from "@bradenmacdonald/s3-lite-client";
+import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
 import { simpleDecrypt, simpleEncrypt } from "./crypto";
 import {
   type ExportData,
@@ -16,6 +16,18 @@ import {
 } from "./storage";
 
 const SYNC_FILE_NAME = "volumehero-sync.json";
+
+/**
+ * Match an S3 error by HTTP status.
+ *
+ * `ServerError.message` carries the `<Message>` text from S3's XML error body
+ * (e.g. "The specified key does not exist."), never the numeric status — so
+ * substring-matching the message for "404" never fired. The status lives on
+ * `statusCode`.
+ */
+function isS3Status(error: unknown, statusCode: number): boolean {
+  return error instanceof S3Errors.ServerError && error.statusCode === statusCode;
+}
 
 interface SyncResult {
   success: boolean;
@@ -79,11 +91,11 @@ export async function testS3Connection(config: S3Config): Promise<SyncResult> {
       return { success: true, message: "Connection successful (file exists)" };
     } catch (error) {
       // If it's a 404, that's fine - bucket is accessible
-      if (error instanceof Error && error.message.includes("404")) {
+      if (isS3Status(error, 404)) {
         return { success: true, message: "Connection successful" };
       }
       // Check for access denied
-      if (error instanceof Error && error.message.includes("403")) {
+      if (isS3Status(error, 403)) {
         return { success: false, message: "Access denied - check credentials" };
       }
       throw error;
@@ -136,7 +148,7 @@ export async function downloadFromS3(
     return { success: true, data, message: "Settings downloaded" };
   } catch (error) {
     // Check for 404 - file doesn't exist
-    if (error instanceof Error && error.message.includes("404")) {
+    if (isS3Status(error, 404)) {
       return { success: false, message: "No remote settings found" };
     }
     return {
