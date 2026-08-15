@@ -3,11 +3,43 @@
  * Handles native volume and Web Audio API gain for volume boost beyond 100%
  */
 
-// Store AudioContext and GainNode references per media element
-const audioContextMap = new WeakMap<HTMLMediaElement, AudioContext>();
-const gainNodeMap = new WeakMap<HTMLMediaElement, GainNode>();
-const sourceNodeMap = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
+import { type EQSettings, isFlatEQ } from "./audio-eq";
+
+export const MAX_VOLUME = 6;
+
+/**
+ * The Web Audio chain built for a boosted element.
+ *
+ * `createMediaElementSource()` can only be called once per element and
+ * permanently reroutes its audio, so the whole chain is created together, once,
+ * and reused. Nodes are always connected in this order:
+ *
+ *   source → bass → treble → gain → limiter → destination
+ *
+ * The EQ filters sit before the gain so their boost is amplified with the
+ * signal, and the limiter sits last so it catches whatever the gain produces.
+ */
+interface AudioChain {
+  context: AudioContext;
+  source: MediaElementAudioSourceNode;
+  bass: BiquadFilterNode;
+  treble: BiquadFilterNode;
+  gain: GainNode;
+  limiter: DynamicsCompressorNode;
+}
+
+const chainMap = new WeakMap<HTMLMediaElement, AudioChain>();
 const processedElements = new WeakSet<HTMLMediaElement>();
+
+/** Last EQ requested per element, so re-applying volume keeps the EQ. */
+const eqMap = new WeakMap<HTMLMediaElement, EQSettings>();
+
+/**
+ * Ramp time for gain changes. Assigning `gain.value` directly steps the signal
+ * discontinuously, which is audible as a click or pop while dragging the
+ * slider; a short exponential approach removes it without perceptible lag.
+ */
+const GAIN_RAMP_SECONDS = 0.03;
 
 /**
  * Calculate the gain value for Web Audio API
@@ -15,51 +47,80 @@ const processedElements = new WeakSet<HTMLMediaElement>();
  * @returns Gain value for GainNode
  */
 export function calculateGainValue(volume: number): number {
-  // Clamp volume between 0 and 6
-  return Math.max(0, Math.min(6, volume));
+  // Math.min/Math.max propagate NaN, and assigning NaN to an AudioParam throws.
+  // Fall back to unity so a malformed stored value can never break playback.
+  if (!Number.isFinite(volume)) return 1;
+  return Math.max(0, Math.min(MAX_VOLUME, volume));
 }
 
 /**
- * Create or get existing AudioContext for a media element
- * @param mediaElement - The HTML media element
- * @returns AudioContext instance
+ * Build (or fetch) the audio chain for an element.
+ *
+ * Returns null when the chain cannot be created — most commonly because the
+ * media is cross-origin without CORS headers, where routing through Web Audio
+ * would output silence. In that case the caller falls back to native volume.
  */
-export function createAudioContext(mediaElement: HTMLMediaElement): AudioContext {
-  let audioContext = audioContextMap.get(mediaElement);
+function getOrCreateChain(mediaElement: HTMLMediaElement): AudioChain | null {
+  const existing = chainMap.get(mediaElement);
+  if (existing) return existing;
 
-  if (!audioContext) {
-    audioContext = new AudioContext();
-    audioContextMap.set(mediaElement, audioContext);
+  try {
+    const context = new AudioContext();
+    const source = context.createMediaElementSource(mediaElement);
+
+    const bass = context.createBiquadFilter();
+    bass.type = "lowshelf";
+    bass.frequency.value = 200;
+    bass.gain.value = 0;
+
+    const treble = context.createBiquadFilter();
+    treble.type = "highshelf";
+    treble.frequency.value = 3000;
+    treble.gain.value = 0;
+
+    const gain = context.createGain();
+    gain.gain.value = 1;
+
+    // Catch the peaks that boosting past 100% would otherwise clip into hard
+    // distortion. The soft knee and fast release keep speech and music intact
+    // while making high boost levels usable rather than merely loud.
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+
+    source.connect(bass);
+    bass.connect(treble);
+    treble.connect(gain);
+    gain.connect(limiter);
+    limiter.connect(context.destination);
+
+    const chain: AudioChain = { context, source, bass, treble, gain, limiter };
+    chainMap.set(mediaElement, chain);
+    return chain;
+  } catch (error) {
+    // Typically a cross-origin element without CORS headers.
+    console.error("[VolumeHero] Could not create audio chain:", error);
+    return null;
   }
-
-  return audioContext;
 }
 
-/**
- * Setup Web Audio API gain node for volume boost beyond 100%
- * @param mediaElement - The HTML media element
- * @param audioContext - The AudioContext instance
- * @returns GainNode instance
- */
-function setupGainNode(mediaElement: HTMLMediaElement, audioContext: AudioContext): GainNode {
-  let gainNode = gainNodeMap.get(mediaElement);
-  let sourceNode = sourceNodeMap.get(mediaElement);
+/** Smoothly move an AudioParam to a target value. */
+function rampTo(param: AudioParam, value: number, context: AudioContext): void {
+  const now = context.currentTime;
+  param.cancelScheduledValues(now);
+  param.setTargetAtTime(value, now, GAIN_RAMP_SECONDS);
+}
 
-  if (!gainNode || !sourceNode) {
-    // Create source node from media element (can only be done once per element)
-    sourceNode = audioContext.createMediaElementSource(mediaElement);
-    sourceNodeMap.set(mediaElement, sourceNode);
-
-    // Create gain node
-    gainNode = audioContext.createGain();
-    gainNodeMap.set(mediaElement, gainNode);
-
-    // Connect: source → gain → destination
-    sourceNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+/** Resume a context that the browser suspended pending user interaction. */
+function resumeIfSuspended(context: AudioContext): void {
+  if (context.state === "suspended") {
+    context.resume().catch((err) => {
+      console.error("[VolumeHero] Failed to resume AudioContext:", err);
+    });
   }
-
-  return gainNode;
 }
 
 /**
@@ -70,46 +131,65 @@ function setupGainNode(mediaElement: HTMLMediaElement, audioContext: AudioContex
  */
 export function applyVolumeToMedia(mediaElement: HTMLMediaElement, volumeLevel: number): void {
   try {
-    // Clamp volume to valid range
-    const clampedVolume = Math.max(0, Math.min(6, volumeLevel));
+    const clampedVolume = calculateGainValue(volumeLevel);
+    const eq = eqMap.get(mediaElement);
+    const needsChain = clampedVolume > 1.0 || (eq !== undefined && !isFlatEQ(eq));
+    const existingChain = chainMap.get(mediaElement);
 
-    if (clampedVolume <= 1.0) {
-      // For volume <= 100%, use native volume property
+    // Only build the Web Audio chain when it is actually needed: creating it is
+    // irreversible for the element, so plain playback should never pay for it.
+    if (!needsChain && !existingChain) {
       mediaElement.volume = clampedVolume;
-
-      // If we have a gain node, reset it to 1.0
-      const gainNode = gainNodeMap.get(mediaElement);
-      if (gainNode) {
-        gainNode.gain.value = 1.0;
-      }
-    } else {
-      // For volume > 100%, use Web Audio API
-      // Set native volume to max
-      mediaElement.volume = 1.0;
-
-      // Create/get audio context and gain node
-      const audioContext = createAudioContext(mediaElement);
-
-      const gainNode = setupGainNode(mediaElement, audioContext);
-
-      // Set gain value before resuming — value persists on the node and takes effect once the
-      // context starts processing. Resume is requested afterward so audio begins promptly.
-      gainNode.gain.value = clampedVolume;
-
-      if (audioContext.state === "suspended") {
-        audioContext.resume().catch((err) => {
-          console.error("[VolumeHero] Failed to resume AudioContext:", err);
-        });
-      }
+      processedElements.add(mediaElement);
+      return;
     }
 
-    // Mark element as processed
-    processedElements.add(mediaElement);
+    const chain = existingChain ?? getOrCreateChain(mediaElement);
+    if (!chain) {
+      // Chain unavailable (e.g. cross-origin): degrade to native volume, which
+      // still covers everything up to 100%.
+      mediaElement.volume = Math.min(1, clampedVolume);
+      processedElements.add(mediaElement);
+      return;
+    }
 
-    console.log(`[VolumeHero] Applied volume ${Math.round(clampedVolume * 100)}% to media element`);
+    // Native volume stays at unity once the chain exists; the gain node is the
+    // single place volume is controlled, so the two never fight each other.
+    mediaElement.volume = 1.0;
+    rampTo(chain.gain.gain, clampedVolume, chain.context);
+    resumeIfSuspended(chain.context);
+
+    processedElements.add(mediaElement);
   } catch (error) {
     console.error("[VolumeHero] Failed to apply volume:", error);
   }
+}
+
+/**
+ * Apply equalizer settings to a media element.
+ *
+ * Building the chain is deferred until the EQ is actually non-flat, so enabling
+ * the feature costs nothing for users who leave it at its defaults.
+ */
+export function applyEQToMedia(mediaElement: HTMLMediaElement, settings: EQSettings): void {
+  eqMap.set(mediaElement, settings);
+
+  const existingChain = chainMap.get(mediaElement);
+  if (!existingChain && isFlatEQ(settings)) return;
+
+  const chain = existingChain ?? getOrCreateChain(mediaElement);
+  if (!chain) return;
+
+  rampTo(chain.bass.gain, Math.max(-12, Math.min(12, settings.bassBoost)), chain.context);
+  rampTo(chain.treble.gain, Math.max(-12, Math.min(12, settings.trebleBoost)), chain.context);
+  resumeIfSuspended(chain.context);
+}
+
+/** Read back the EQ currently applied to an element. */
+export function getMediaEQSettings(mediaElement: HTMLMediaElement): EQSettings | null {
+  const chain = chainMap.get(mediaElement);
+  if (!chain) return eqMap.get(mediaElement) ?? null;
+  return { bassBoost: chain.bass.gain.value, trebleBoost: chain.treble.gain.value };
 }
 
 /**
@@ -134,9 +214,45 @@ export function resetVolume(mediaElement: HTMLMediaElement): void {
  * @returns Array of HTMLMediaElement
  */
 export function getAllMediaElements(): HTMLMediaElement[] {
-  const videos = Array.from(document.querySelectorAll("video"));
-  const audios = Array.from(document.querySelectorAll("audio"));
-  return [...videos, ...audios];
+  return collectMediaElements(document);
+}
+
+/**
+ * Collect media elements from a root, descending into open shadow roots.
+ *
+ * A plain `querySelectorAll` does not cross a shadow boundary, which is why
+ * media stayed unboosted on sites whose player is a web component.
+ *
+ * Frames are deliberately *not* traversed here: the content script runs in
+ * every frame, so each one owns the media in its own document. Reaching across
+ * would have two documents racing to build a chain on the same element, and
+ * `createMediaElementSource` only permits one — the loser would silently fall
+ * back to native volume and cap the boost at 100%.
+ */
+export function collectMediaElements(root: Document | ShadowRoot): HTMLMediaElement[] {
+  const found: HTMLMediaElement[] = [];
+  const seen = new Set<HTMLMediaElement>();
+
+  const add = (element: HTMLMediaElement) => {
+    if (seen.has(element)) return;
+    seen.add(element);
+    found.push(element);
+  };
+
+  const walk = (node: Document | ShadowRoot) => {
+    for (const element of node.querySelectorAll<HTMLMediaElement>("video, audio")) {
+      add(element);
+    }
+
+    // Descend into any open shadow roots below this node.
+    for (const element of node.querySelectorAll("*")) {
+      const shadow = element.shadowRoot;
+      if (shadow) walk(shadow);
+    }
+  };
+
+  walk(root);
+  return found;
 }
 
 /**

@@ -179,5 +179,16 @@
   "sync_s3_bucket": "Bucket Name",
   "sync_s3_region": "Region",
   "sync_s3_endpoint": "Custom Endpoint (Optional)",
-  "sync_s3_endpoint_placeholder": "https://s3.example.com"
+  "sync_s3_endpoint_placeholder": "https://s3.example.com",
+  "popup_eq": "Equalizer",
+  "popup_eq_preset": "Preset",
+  "popup_eq_bass": "Bass",
+  "popup_eq_treble": "Treble",
+  "popup_eq_custom": "Custom",
+  "eq_preset_flat": "Flat",
+  "eq_preset_bass_boost": "Bass Boost",
+  "eq_preset_treble_boost": "Treble Boost",
+  "eq_preset_vocal_clarity": "Vocal Clarity",
+  "eq_preset_movie": "Movie",
+  "eq_preset_music": "Music"
 }

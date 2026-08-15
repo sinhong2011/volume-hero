@@ -4,6 +4,7 @@
  */
 
 import { onMediaDetected, processExistingMedia, startObserving } from "@/content/media-observer";
+import { type EQSettings, FLAT_EQ } from "@/utils/audio-eq";
 import { showVolumeOSD } from "@/utils/osd";
 import {
   extractDomain,
@@ -11,33 +12,36 @@ import {
   getGlobalSettings,
   isDomainAllowed,
 } from "@/utils/storage";
-import { applyVolumeToMedia, getAllMediaElements, getAllMediaInfo } from "@/utils/volume";
+import {
+  applyEQToMedia,
+  applyVolumeToMedia,
+  getAllMediaElements,
+  getAllMediaInfo,
+} from "@/utils/volume";
 
 let currentVolume = 1.0;
+let currentEQ: EQSettings = { ...FLAT_EQ };
 let hasManuallyApplied = false;
 let osdEnabled = true;
 let osdDuration = 1500;
+
+/** Apply the current volume and EQ to one element, in that order. */
+function applySettingsToElement(element: HTMLMediaElement): void {
+  applyEQToMedia(element, currentEQ);
+  applyVolumeToMedia(element, currentVolume);
+}
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_start",
 
   async main() {
-    console.log("[VolumeHero] Content script loaded");
-
-    // Get current domain
     const domain = extractDomain(window.location.href);
-    if (!domain) {
-      console.log("[VolumeHero] No valid domain, skipping initialization");
-      return;
-    }
+    if (!domain) return;
 
     // Check if domain is allowed (respects both blacklist and whitelist)
     const allowed = await isDomainAllowed(domain);
-    if (!allowed) {
-      console.log("[VolumeHero] Domain is not allowed, skipping initialization");
-      return;
-    }
+    if (!allowed) return;
 
     // Load global settings for OSD
     const globalSettings = await getGlobalSettings();
@@ -47,20 +51,18 @@ export default defineContentScript({
     // Load saved settings
     const settings = await getDomainSettings(domain);
     currentVolume = settings.volume;
+    currentEQ = {
+      bassBoost: settings.bassBoost ?? 0,
+      trebleBoost: settings.trebleBoost ?? 0,
+    };
 
     // Only apply on load if autoApply is enabled
     const shouldAutoApply = settings.autoApply || globalSettings.autoApplyAllByDefault;
 
-    console.log(
-      `[VolumeHero] Domain: ${domain}, AutoApply: ${shouldAutoApply}, Volume: ${Math.round(
-        currentVolume * 100
-      )}%`
-    );
-
     // Setup media detection callback
     onMediaDetected((element) => {
       if (shouldAutoApply || hasManuallyApplied) {
-        applyVolumeToMedia(element, currentVolume);
+        applySettingsToElement(element);
       }
     });
 
@@ -98,12 +100,10 @@ function initializeMediaObserver(shouldApply: boolean): void {
  * @returns Response or undefined
  */
 function handleMessage(
-  message: { type: string; volume?: number; showOsd?: boolean },
+  message: { type: string; volume?: number; showOsd?: boolean; eq?: EQSettings },
   _sender: unknown,
-  _sendResponse: (response?: unknown) => void
+  sendResponse: (response?: unknown) => void
 ): boolean {
-  console.log("[VolumeHero] Received message:", message);
-
   if (message.type === "APPLY_VOLUME" && typeof message.volume === "number") {
     currentVolume = message.volume;
     hasManuallyApplied = true;
@@ -120,23 +120,34 @@ function handleMessage(
       showVolumeOSD(Math.round(currentVolume * 100), false, osdDuration);
     }
 
-    console.log(
-      `[VolumeHero] Applied volume ${Math.round(currentVolume * 100)}% to ${
-        mediaElements.length
-      } elements`
-    );
-    return true;
+    // Answer synchronously. Returning true without ever calling sendResponse
+    // leaves the sender's message channel open until it times out.
+    sendResponse({ ok: true, applied: mediaElements.length });
+    return false;
+  }
+
+  if (message.type === "APPLY_EQ" && message.eq) {
+    currentEQ = message.eq;
+    hasManuallyApplied = true;
+
+    const mediaElements = getAllMediaElements();
+    mediaElements.forEach((element) => {
+      applyEQToMedia(element, currentEQ);
+    });
+
+    sendResponse({ ok: true, applied: mediaElements.length });
+    return false;
   }
 
   if (message.type === "GET_VOLUME") {
-    _sendResponse({ volume: currentVolume });
-    return true;
+    sendResponse({ volume: currentVolume, eq: currentEQ });
+    return false;
   }
 
   if (message.type === "GET_MEDIA_INFO") {
     const mediaInfo = getAllMediaInfo();
-    _sendResponse({ mediaInfo });
-    return true;
+    sendResponse({ mediaInfo });
+    return false;
   }
 
   return false;

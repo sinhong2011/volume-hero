@@ -3,7 +3,7 @@
  * Detects and monitors media elements on the page using MutationObserver
  */
 
-import { applyVolumeToMedia, getAllMediaElements, isElementProcessed } from "@/utils/volume";
+import { getAllMediaElements, isElementProcessed } from "@/utils/volume";
 
 type MediaCallback = (element: HTMLMediaElement) => void;
 
@@ -36,7 +36,50 @@ function processElement(element: Element): void {
       notifyCallbacks(mediaEl);
     }
   });
+
+  // Descend into open shadow roots, which querySelectorAll does not cross.
+  // Players built as web components keep their <video> there, so without this
+  // they are only found if they happen to exist at the initial page scan.
+  if (element.shadowRoot) {
+    observeShadowRoot(element.shadowRoot);
+  }
+  for (const descendant of element.querySelectorAll("*")) {
+    if (descendant.shadowRoot) observeShadowRoot(descendant.shadowRoot);
+  }
 }
+
+/** Roots already under observation, so each is only wired up once. */
+const observedRoots = new WeakSet<ShadowRoot>();
+
+/**
+ * Scan a shadow root for media and keep watching it for later additions.
+ * A MutationObserver on the document does not see mutations inside a shadow
+ * root, so each one needs its own observer.
+ */
+function observeShadowRoot(root: ShadowRoot): void {
+  if (observedRoots.has(root)) return;
+  observedRoots.add(root);
+
+  for (const mediaEl of root.querySelectorAll("video, audio")) {
+    if (isMediaElement(mediaEl)) notifyCallbacks(mediaEl);
+  }
+
+  for (const element of root.querySelectorAll("*")) {
+    if (element.shadowRoot) observeShadowRoot(element.shadowRoot);
+  }
+
+  const shadowObserver = new MutationObserver(handleMutations);
+  shadowObserver.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["src", "srcset"],
+  });
+  shadowObservers.push(shadowObserver);
+}
+
+/** Observers created for shadow roots, disconnected alongside the main one. */
+const shadowObservers: MutationObserver[] = [];
 
 /**
  * Notify all registered callbacks about a new media element
@@ -98,7 +141,10 @@ export function startObserving(): void {
     attributeFilter: ["src", "srcset"],
   });
 
-  console.log("[VolumeHero] Started observing DOM for media elements");
+  // Open shadow roots that already exist at start-up.
+  for (const element of document.querySelectorAll("*")) {
+    if (element.shadowRoot) observeShadowRoot(element.shadowRoot);
+  }
 }
 
 /**
@@ -108,8 +154,11 @@ export function stopObserving(): void {
   if (observer) {
     observer.disconnect();
     observer = null;
-    console.log("[VolumeHero] Stopped observing DOM");
   }
+  for (const shadowObserver of shadowObservers) {
+    shadowObserver.disconnect();
+  }
+  shadowObservers.length = 0;
 }
 
 /**
@@ -133,25 +182,8 @@ export function offMediaDetected(callback: MediaCallback): void {
  */
 export function processExistingMedia(): void {
   const mediaElements = getAllMediaElements();
-  console.log(`[VolumeHero] Found ${mediaElements.length} existing media elements`);
 
   mediaElements.forEach((element) => {
     notifyCallbacks(element);
   });
-}
-
-/**
- * Initialize media observer with volume application
- * @param volumeLevel - Volume level to apply (0.0 to 3.0)
- */
-export function initializeWithVolume(volumeLevel: number): void {
-  onMediaDetected((element) => {
-    applyVolumeToMedia(element, volumeLevel);
-  });
-
-  // Process existing elements first
-  processExistingMedia();
-
-  // Start observing for new elements
-  startObserving();
 }

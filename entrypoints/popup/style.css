@@ -378,3 +378,19 @@ body {
 .popup-spinner {
   @apply w-5 h-5 border-2 border-macos-text-tertiary border-t-macos-accent rounded-full animate-spin;
 }
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+/* Mirrors the options page: honour the OS "reduce motion" preference by
+   removing transitions and the spinner's rotation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

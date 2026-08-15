@@ -7,6 +7,7 @@
 import { debounce } from "es-toolkit";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import toast from "solid-toast";
+import { type EQSettings, FLAT_EQ } from "@/utils/audio-eq";
 import {
   DEFAULT_SETTINGS,
   type DomainSettings,
@@ -28,8 +29,10 @@ export interface VolumeControlState {
   tabsWithMedia: () => TabMediaInfo[];
   tabVolumes: () => Map<number, number>;
   globalSettings: () => GlobalSettings | null;
+  eq: () => EQSettings;
   setVolume: (value: number) => void;
   setAutoApply: (value: boolean) => void;
+  setEQ: (value: EQSettings) => void;
   resetVolume: () => void;
   applyToTab: () => Promise<void>;
   refreshMediaInfo: () => Promise<void>;
@@ -53,6 +56,7 @@ export function useVolumeControl(): VolumeControlState {
   const [tabsWithMedia, setTabsWithMedia] = createSignal<TabMediaInfo[]>([]);
   const [tabVolumes, setTabVolumes] = createSignal<Map<number, number>>(new Map());
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
+  const [eq, setEQSignal] = createSignal<EQSettings>({ ...FLAT_EQ });
 
   // Store debounced functions for tab volume changes (one per tab)
   const tabVolumeDebouncedFns = new Map<
@@ -75,12 +79,13 @@ export function useVolumeControl(): VolumeControlState {
         const response = await browser.tabs.sendMessage(activeTab.id, {
           type: "GET_MEDIA_INFO",
         });
-        if (response?.mediaInfo) {
-          setMediaInfo(response.mediaInfo);
-        }
+        setMediaInfo(response?.mediaInfo ?? []);
       }
     } catch (error) {
-      console.error("[VolumeHero] Failed to get media info:", error);
+      // Tabs without the content script (extension pages, the web store,
+      // restricted URLs) simply have no receiver. That is an expected state,
+      // not a failure, so it must not surface as a console error.
+      console.debug("[VolumeHero] No media info from active tab:", error);
       setMediaInfo([]);
     }
   }
@@ -223,6 +228,10 @@ export function useVolumeControl(): VolumeControlState {
             const cachedSettings = getDomainSettingsSync(currentDomain);
             setVolumeSignal(cachedSettings.volume);
             setAutoApplySignal(cachedSettings.autoApply);
+            setEQSignal({
+              bassBoost: cachedSettings.bassBoost ?? 0,
+              trebleBoost: cachedSettings.trebleBoost ?? 0,
+            });
 
             // Show UI immediately (don't wait for storage verification)
             setIsLoading(false);
@@ -257,6 +266,10 @@ export function useVolumeControl(): VolumeControlState {
               if (settings.autoApply !== cachedSettings.autoApply) {
                 setAutoApplySignal(settings.autoApply);
               }
+              setEQSignal({
+                bassBoost: settings.bassBoost ?? 0,
+                trebleBoost: settings.trebleBoost ?? 0,
+              });
             });
 
             // Fetch media info and all tabs in parallel (non-blocking)
@@ -306,9 +319,19 @@ export function useVolumeControl(): VolumeControlState {
     await applyToTab();
   }, DEBOUNCE_DELAY);
 
+  /**
+   * Debounced save for EQ, mirroring the volume path so dragging a band does
+   * not write to storage on every frame.
+   */
+  const debouncedSaveEQ = debounce(async (settings: EQSettings) => {
+    await saveSettings(settings);
+    await applyEQToTab(settings);
+  }, DEBOUNCE_DELAY);
+
   // Cleanup debounced functions on unmount
   onCleanup(() => {
     debouncedSaveAndApply.cancel();
+    debouncedSaveEQ.cancel();
     // Cancel all tab volume debounced functions
     for (const debouncedFn of tabVolumeDebouncedFns.values()) {
       debouncedFn.cancel();
@@ -336,6 +359,32 @@ export function useVolumeControl(): VolumeControlState {
   function setAutoApply(value: boolean): void {
     setAutoApplySignal(value);
     saveSettings({ autoApply: value });
+  }
+
+  /**
+   * Set the equalizer with a debounced save
+   */
+  function setEQ(value: EQSettings): void {
+    const clamped: EQSettings = {
+      bassBoost: Math.max(-12, Math.min(12, value.bassBoost)),
+      trebleBoost: Math.max(-12, Math.min(12, value.trebleBoost)),
+    };
+    setEQSignal(clamped);
+    debouncedSaveEQ(clamped);
+  }
+
+  /**
+   * Push EQ settings to the active tab's content script.
+   */
+  async function applyEQToTab(settings: EQSettings): Promise<void> {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      const activeTab = tabs[0];
+      if (!activeTab?.id) return;
+      await browser.tabs.sendMessage(activeTab.id, { type: "APPLY_EQ", eq: settings });
+    } catch (error) {
+      console.error("[VolumeHero] Failed to apply EQ to tab:", error);
+    }
   }
 
   /**
@@ -383,8 +432,10 @@ export function useVolumeControl(): VolumeControlState {
     tabsWithMedia,
     tabVolumes,
     globalSettings,
+    eq,
     setVolume,
     setAutoApply,
+    setEQ,
     resetVolume,
     applyToTab,
     refreshMediaInfo,

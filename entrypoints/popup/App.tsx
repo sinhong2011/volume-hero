@@ -15,6 +15,7 @@ import {
 import { For, onCleanup, onMount, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useVolumeControl } from "@/hooks/useVolumeControl";
+import { EQ_PRESETS, type EQPresetName, matchEQPreset } from "@/utils/audio-eq";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/utils/i18n";
 import type { TabMediaInfo } from "@/utils/volume";
@@ -30,13 +31,38 @@ function App() {
     tabsWithMedia,
     tabVolumes,
     globalSettings,
+    eq,
     setVolume,
     setAutoApply,
+    setEQ,
     resetVolume,
     setTabVolume,
     focusTab,
     refreshAllTabsMedia,
   } = useVolumeControl();
+
+  const EQ_PRESET_NAMES = Object.keys(EQ_PRESETS) as EQPresetName[];
+
+  const EQ_BANDS = [
+    { key: "bassBoost", label: () => m.popup_eq_bass() },
+    { key: "trebleBoost", label: () => m.popup_eq_treble() },
+  ] as const;
+
+  const presetLabel = (preset: EQPresetName): string =>
+    ({
+      flat: m.eq_preset_flat(),
+      bass_boost: m.eq_preset_bass_boost(),
+      treble_boost: m.eq_preset_treble_boost(),
+      vocal_clarity: m.eq_preset_vocal_clarity(),
+      movie: m.eq_preset_movie(),
+      music: m.eq_preset_music(),
+    })[preset];
+
+  const activePreset = () => matchEQPreset(eq());
+  const activePresetLabel = () => {
+    const preset = activePreset();
+    return preset ? presetLabel(preset) : m.popup_eq_custom();
+  };
 
   const openOptionsPage = () => {
     browser.runtime.openOptionsPage();
@@ -121,13 +147,17 @@ function App() {
                 class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square"
                 onClick={resetVolume}
                 title={m.popup_reset_to_100()}
+                aria-label={m.popup_reset_to_100()}
               >
                 <RotateCcw class="h-4 w-4" />
               </button>
             </Show>
             <Show when={domain()}>
               <Tooltip.Root openDelay={100} closeDelay={0}>
-                <Tooltip.Trigger class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square">
+                <Tooltip.Trigger
+                  class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square"
+                  aria-label={m.popup_shortcuts_popup()}
+                >
                   <Info class="h-4 w-4" />
                 </Tooltip.Trigger>
                 <Portal>
@@ -227,6 +257,7 @@ function App() {
               class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square"
               onClick={openOptionsPage}
               title={m.settings_title()}
+              aria-label={m.settings_title()}
             >
               <Settings class="h-4 w-4" />
             </button>
@@ -277,6 +308,7 @@ function App() {
                 class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square"
                 onClick={() => setVolume(0)}
                 title={m.popup_mute()}
+                aria-label={m.popup_mute()}
               >
                 <VolumeX class="h-4 w-4" />
               </button>
@@ -307,6 +339,7 @@ function App() {
                 class="popup-btn popup-btn-ghost popup-btn-sm popup-btn-square"
                 onClick={() => setVolume(globalSettings()?.maxVolumeLimit ?? 6)}
                 title={m.popup_max_volume()}
+                aria-label={m.popup_max_volume()}
               >
                 <Volume2 class="h-4 w-4" />
               </button>
@@ -331,6 +364,68 @@ function App() {
                 <span class="text-xs">{m.popup_distortion_warning()}</span>
               </div>
             </Show>
+          </div>
+
+          {/* Equalizer */}
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-macos-text font-medium">{m.popup_eq()}</span>
+              <span class="text-[10px] font-macos-mono text-macos-text-tertiary">
+                {activePresetLabel()}
+              </span>
+            </div>
+
+            <div class="flex flex-wrap gap-1 mb-3">
+              <For each={EQ_PRESET_NAMES}>
+                {(preset) => (
+                  <button
+                    type="button"
+                    class={cn(
+                      "popup-btn popup-btn-ghost popup-btn-xs",
+                      activePreset() === preset && "popup-tab-card-active"
+                    )}
+                    onClick={() => setEQ({ ...EQ_PRESETS[preset] })}
+                    aria-pressed={activePreset() === preset}
+                  >
+                    {presetLabel(preset)}
+                  </button>
+                )}
+              </For>
+            </div>
+
+            <For each={EQ_BANDS}>
+              {(band) => (
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-[11px] text-macos-text-secondary w-10 shrink-0">
+                    {band.label()}
+                  </span>
+                  <Slider.Root
+                    value={[eq()[band.key]]}
+                    onValueChange={(e) => {
+                      const next = e.value[0];
+                      if (next !== undefined) setEQ({ ...eq(), [band.key]: next });
+                    }}
+                    min={-12}
+                    max={12}
+                    step={1}
+                    class="flex-1"
+                  >
+                    <Slider.Control>
+                      <Slider.Track>
+                        <Slider.Range />
+                      </Slider.Track>
+                      <Slider.Thumb index={0}>
+                        <Slider.HiddenInput />
+                      </Slider.Thumb>
+                    </Slider.Control>
+                  </Slider.Root>
+                  <span class="text-[10px] font-macos-mono text-macos-text-tertiary w-10 text-right tabular-nums">
+                    {eq()[band.key] > 0 ? "+" : ""}
+                    {eq()[band.key]} dB
+                  </span>
+                </div>
+              )}
+            </For>
           </div>
 
           {/* Auto-apply Toggle */}
@@ -401,6 +496,7 @@ function App() {
                                 class="popup-btn popup-btn-ghost popup-btn-xs popup-btn-square shrink-0"
                                 onClick={() => focusTab(tab.tabId)}
                                 title={m.popup_jump_to_tab()}
+                                aria-label={m.popup_jump_to_tab()}
                               >
                                 <ExternalLink class="h-3 w-3" />
                               </button>
@@ -416,6 +512,7 @@ function App() {
                             class="popup-btn popup-btn-ghost popup-btn-xs popup-btn-square"
                             onClick={() => setTab(0)}
                             title={m.popup_mute()}
+                            aria-label={m.popup_mute()}
                           >
                             <VolumeX class="h-3.5 w-3.5" />
                           </button>
@@ -454,6 +551,7 @@ function App() {
                             class="popup-btn popup-btn-ghost popup-btn-xs popup-btn-square"
                             onClick={() => setTab(tab.isActive ? maxVolumePercent() / 100 : 6)}
                             title={m.popup_max_volume()}
+                            aria-label={m.popup_max_volume()}
                           >
                             <Volume2 class="h-3.5 w-3.5" />
                           </button>
