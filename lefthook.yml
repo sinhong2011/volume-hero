@@ -26,3 +26,5 @@ pre-push:
   commands:
     typecheck:
       run: bun run compile
+    test:
+      run: bun run test
