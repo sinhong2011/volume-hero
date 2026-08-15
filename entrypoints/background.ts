@@ -7,14 +7,39 @@ import {
   extractDomain,
   getDomainSettings,
   getGlobalSettings,
-  getGlobalSettingsSync,
   saveDomainSettings,
 } from "@/utils/storage";
 import { startAutoSync } from "@/utils/sync";
 import type { MediaInfo, TabMediaInfo } from "@/utils/volume";
 
-// Track previous volume for mute toggle
-const previousVolume: Map<number, number> = new Map();
+// Track the pre-mute volume so "unmute" can restore it.
+//
+// This lives in session storage rather than a module-level Map for two reasons:
+// the MV3 service worker is torn down after a short idle period (an in-memory
+// value would silently reset unmute to 100%), and the key is the domain rather
+// than the tab id so muting in one tab and unmuting in another tab on the same
+// site restores the same level that domain settings are stored against.
+const PREVIOUS_VOLUME_PREFIX = "previousVolume:";
+
+async function getPreviousVolume(domain: string): Promise<number | undefined> {
+  const key = PREVIOUS_VOLUME_PREFIX + domain;
+  try {
+    const result = await browser.storage.session.get(key);
+    const value = result[key];
+    return typeof value === "number" ? value : undefined;
+  } catch (error) {
+    console.error("[VolumeHero] Failed to read previous volume:", error);
+    return undefined;
+  }
+}
+
+async function setPreviousVolume(domain: string, volume: number): Promise<void> {
+  try {
+    await browser.storage.session.set({ [PREVIOUS_VOLUME_PREFIX + domain]: volume });
+  } catch (error) {
+    console.error("[VolumeHero] Failed to persist previous volume:", error);
+  }
+}
 
 export default defineBackground(() => {
   console.log("[VolumeHero] Background script initialized", {
@@ -67,7 +92,7 @@ export default defineBackground(() => {
     ]);
     // Only reflect the saved volume if it actually gets applied on load.
     const willApply = settings.autoApply || globalSettings.autoApplyAllByDefault;
-    updateBadge(tabId, willApply ? settings.volume : 1.0);
+    await updateBadge(tabId, willApply ? settings.volume : 1.0);
   });
 
   // Handle keyboard commands
@@ -101,10 +126,10 @@ export default defineBackground(() => {
       case "volume-mute":
         if (settings.volume === 0) {
           // Unmute - restore previous volume
-          newVolume = previousVolume.get(activeTab.id) ?? 1.0;
+          newVolume = (await getPreviousVolume(domain)) ?? 1.0;
         } else {
           // Mute - save current volume and set to 0
-          previousVolume.set(activeTab.id, settings.volume);
+          await setPreviousVolume(domain, settings.volume);
           newVolume = 0;
         }
         break;
@@ -115,7 +140,7 @@ export default defineBackground(() => {
     await applyVolumeToTab(activeTab.id, newVolume, true);
 
     // Update badge to show current volume
-    updateBadge(activeTab.id, newVolume);
+    await updateBadge(activeTab.id, newVolume);
 
     console.log(`[VolumeHero] Command ${command}: volume set to ${Math.round(newVolume * 100)}%`);
   });
@@ -129,9 +154,9 @@ export default defineBackground(() => {
 
     if (message.type === "APPLY_VOLUME_TO_TAB") {
       const { tabId, volume } = message;
-      applyVolumeToTab(tabId, volume).then((result) => {
+      applyVolumeToTab(tabId, volume).then(async (result) => {
         // Update badge when volume is applied
-        updateBadge(tabId, volume);
+        await updateBadge(tabId, volume);
         sendResponse(result);
       });
       return true;
@@ -145,8 +170,8 @@ export default defineBackground(() => {
 
     if (message.type === "UPDATE_BADGE") {
       const { tabId, volume } = message;
-      // Ensure global settings (showBadge) are loaded before drawing the badge.
-      getGlobalSettings().then(() => updateBadge(tabId, volume));
+      // updateBadge loads global settings (showBadge) itself before drawing.
+      void updateBadge(tabId, volume);
       return false;
     }
   });
@@ -158,7 +183,7 @@ export default defineBackground(() => {
       const domain = extractDomain(tab.url);
       if (domain) {
         const settings = await getDomainSettings(domain);
-        updateBadge(activeInfo.tabId, settings.volume);
+        await updateBadge(activeInfo.tabId, settings.volume);
       } else {
         // Clear badge for non-applicable pages
         browser.action.setBadgeText({ text: "", tabId: activeInfo.tabId });
@@ -170,8 +195,11 @@ export default defineBackground(() => {
 /**
  * Update the extension badge with current volume
  */
-function updateBadge(tabId: number, volume: number): void {
-  const globalSettings = getGlobalSettingsSync();
+async function updateBadge(tabId: number, volume: number): Promise<void> {
+  // Read through the async accessor: the service worker is restarted often, and
+  // the sync cache returns defaults while cold — which made a disabled badge
+  // reappear after every restart.
+  const globalSettings = await getGlobalSettings();
   if (!globalSettings.showBadge) {
     browser.action.setBadgeText({ text: "", tabId });
     return;
@@ -255,49 +283,53 @@ async function injectContentScriptIntoExistingTabs(): Promise<void> {
  */
 async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
   const tabs = await browser.tabs.query({});
-  const tabsWithMedia: TabMediaInfo[] = [];
 
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url) continue;
+  // Probe every tab concurrently. Doing this sequentially meant each
+  // unresponsive tab burned its full message timeout before the next one was
+  // even tried, which visibly stalled the popup's tab list on busy windows.
+  const results = await Promise.all(
+    tabs.map(async (tab): Promise<TabMediaInfo | null> => {
+      if (!tab.id || !tab.url) return null;
 
-    // Skip chrome:// and other restricted URLs
-    if (
-      tab.url.startsWith("chrome://") ||
-      tab.url.startsWith("chrome-extension://") ||
-      tab.url.startsWith("about:") ||
-      tab.url.startsWith("moz-extension://") ||
-      tab.url.startsWith("edge://")
-    ) {
-      continue;
-    }
+      // Skip chrome:// and other restricted URLs
+      if (
+        tab.url.startsWith("chrome://") ||
+        tab.url.startsWith("chrome-extension://") ||
+        tab.url.startsWith("about:") ||
+        tab.url.startsWith("moz-extension://") ||
+        tab.url.startsWith("edge://")
+      ) {
+        return null;
+      }
 
-    try {
-      const response = await browser.tabs.sendMessage(tab.id, {
-        type: "GET_MEDIA_INFO",
-      });
+      try {
+        const response = await browser.tabs.sendMessage(tab.id, {
+          type: "GET_MEDIA_INFO",
+        });
 
-      if (response?.mediaInfo && response.mediaInfo.length > 0) {
+        if (!response?.mediaInfo?.length) return null;
+
         // Check if any media is playing (not paused)
         const playingMedia = response.mediaInfo.filter((m: MediaInfo) => !m.paused);
+        if (playingMedia.length === 0) return null;
 
-        if (playingMedia.length > 0) {
-          tabsWithMedia.push({
-            tabId: tab.id,
-            title: tab.title || "Unknown",
-            favicon: tab.favIconUrl || "",
-            url: tab.url,
-            mediaInfo: playingMedia,
-            isActive: tab.active,
-          });
-        }
+        return {
+          tabId: tab.id,
+          title: tab.title || "Unknown",
+          favicon: tab.favIconUrl || "",
+          url: tab.url,
+          mediaInfo: playingMedia,
+          isActive: tab.active,
+        };
+      } catch (error) {
+        // Tab doesn't have content script or is not accessible
+        console.debug(`[VolumeHero] Cannot access tab ${tab.id}:`, error);
+        return null;
       }
-    } catch (error) {
-      // Tab doesn't have content script or is not accessible
-      console.debug(`[VolumeHero] Cannot access tab ${tab.id}:`, error);
-    }
-  }
+    })
+  );
 
-  return tabsWithMedia;
+  return results.filter((tab): tab is TabMediaInfo => tab !== null);
 }
 
 /**
