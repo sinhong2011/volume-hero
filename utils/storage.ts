@@ -119,6 +119,83 @@ const STORAGE_PREFIX = "volumehero:";
 const GLOBAL_SETTINGS_KEY = "volumehero:global";
 
 /**
+ * Preferences mirrored to `storage.sync` so they follow the user between
+ * browsers signed into the same profile.
+ *
+ * This is an explicit allowlist rather than "everything", for three reasons:
+ *
+ * - `cloudSync` holds credentials. They are sealed with a key that lives in
+ *   this device's IndexedDB, so a copy on another device could not be opened
+ *   anyway — and syncing the ciphertext would push secrets through an extra
+ *   service for no benefit.
+ * - `statistics` is device-local and written often; `storage.sync` enforces
+ *   write-rate limits that routine counters would trip.
+ * - Per-domain volumes stay in `storage.local` entirely. There can be
+ *   thousands of them, which would blow the 100KB sync quota; the WebDAV/S3
+ *   backup remains the way to move those between machines.
+ */
+export const SYNCED_SETTING_KEYS = [
+  "language",
+  "defaultVolume",
+  "maxVolumeLimit",
+  "volumeStepSize",
+  "defaultBassBoost",
+  "defaultTrebleBoost",
+  "keyboardShortcuts",
+  "blacklistedDomains",
+  "whitelistedDomains",
+  "compactMode",
+  "showOtherTabsSection",
+  "showOSD",
+  "osdDurationMs",
+  "autoApplyAllByDefault",
+  "showBadge",
+  "volumePreferenceMode",
+] as const satisfies readonly (keyof GlobalSettings)[];
+
+type SyncedSettings = Partial<Pick<GlobalSettings, (typeof SYNCED_SETTING_KEYS)[number]>>;
+
+/** Narrow a settings object down to the subset that may be synced. */
+export function pickSyncedSettings(settings: GlobalSettings): SyncedSettings {
+  const picked: Record<string, unknown> = {};
+  for (const key of SYNCED_SETTING_KEYS) {
+    picked[key] = settings[key];
+  }
+  return picked as SyncedSettings;
+}
+
+/**
+ * Read the synced preference subset, if any.
+ *
+ * `storage.sync` is unavailable in some contexts (Firefox without a signed-in
+ * account, enterprise policy), so a failure here is normal and simply means
+ * the local copy wins.
+ */
+async function readSyncedSettings(): Promise<SyncedSettings | null> {
+  try {
+    if (!browser.storage.sync) return null;
+    const result = await browser.storage.sync.get(GLOBAL_SETTINGS_KEY);
+    return (result[GLOBAL_SETTINGS_KEY] as SyncedSettings | undefined) ?? null;
+  } catch (error) {
+    console.debug("[VolumeHero] storage.sync unavailable for read:", error);
+    return null;
+  }
+}
+
+/**
+ * Mirror the synced subset. Best-effort: exceeding the sync quota or running
+ * without sync must never block the authoritative local write.
+ */
+async function writeSyncedSettings(settings: GlobalSettings): Promise<void> {
+  try {
+    if (!browser.storage.sync) return;
+    await browser.storage.sync.set({ [GLOBAL_SETTINGS_KEY]: pickSyncedSettings(settings) });
+  } catch (error) {
+    console.debug("[VolumeHero] Could not mirror settings to storage.sync:", error);
+  }
+}
+
+/**
  * Default settings for new domains
  */
 export const DEFAULT_SETTINGS: DomainSettings = {
@@ -148,10 +225,11 @@ let cacheWarmed = false;
  */
 export async function warmCache(domain?: string): Promise<void> {
   try {
-    // Load global settings into cache
+    // Load global settings into cache. This goes through getGlobalSettings so
+    // the warmed value is the fully merged one — defaults filled in and synced
+    // preferences applied — rather than the raw local record.
     if (!globalSettingsCache) {
-      const result = await browser.storage.local.get(GLOBAL_SETTINGS_KEY);
-      globalSettingsCache = result[GLOBAL_SETTINGS_KEY] as GlobalSettings | null;
+      await getGlobalSettings();
     }
 
     // Load specific domain settings if provided
@@ -207,6 +285,17 @@ function updateDomainCache(domain: string, settings: DomainSettings): void {
 function updateGlobalCache(settings: GlobalSettings): void {
   globalSettingsCache = settings;
 }
+
+/**
+ * Drop the cached global settings when another device pushes a change through
+ * Chrome Sync, so the next read picks the new values up instead of serving a
+ * stale in-memory copy for the lifetime of the page or service worker.
+ */
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "sync" && GLOBAL_SETTINGS_KEY in changes) {
+    globalSettingsCache = null;
+  }
+});
 
 /**
  * Invalidate cache entry for a domain
@@ -486,10 +575,19 @@ export async function getGlobalSettings(): Promise<GlobalSettings> {
   }
 
   try {
-    const result = await browser.storage.local.get(GLOBAL_SETTINGS_KEY);
+    const [result, synced] = await Promise.all([
+      browser.storage.local.get(GLOBAL_SETTINGS_KEY),
+      readSyncedSettings(),
+    ]);
 
-    if (result[GLOBAL_SETTINGS_KEY]) {
-      const storedSettings = result[GLOBAL_SETTINGS_KEY] as Partial<GlobalSettings>;
+    if (result[GLOBAL_SETTINGS_KEY] || synced) {
+      // Synced preferences win over the local copy so a change made on another
+      // machine is reflected here; anything outside the synced allowlist
+      // (credentials, statistics) comes from local only.
+      const storedSettings = {
+        ...(result[GLOBAL_SETTINGS_KEY] as Partial<GlobalSettings> | undefined),
+        ...synced,
+      } as Partial<GlobalSettings>;
       // Merge with defaults to ensure new properties are included
       // and updated default values are respected
       const settings: GlobalSettings = {
@@ -518,6 +616,15 @@ export async function getGlobalSettings(): Promise<GlobalSettings> {
         },
       };
       updateGlobalCache(settings);
+
+      // Backfill the mirror for profiles configured before syncing existed.
+      // Without this, an existing user's preferences would not reach their
+      // other devices until they happened to change a setting. Fire-and-forget
+      // so a read is never delayed by the network-backed sync area.
+      if (!synced && result[GLOBAL_SETTINGS_KEY]) {
+        void writeSyncedSettings(settings);
+      }
+
       return settings;
     }
 
@@ -545,7 +652,10 @@ export async function saveGlobalSettings(settings: Partial<GlobalSettings>): Pro
     // Update cache immediately
     updateGlobalCache(newSettings);
 
+    // storage.local is authoritative; the sync mirror is best-effort so a sync
+    // quota error can never lose the user's setting.
     await browser.storage.local.set({ [GLOBAL_SETTINGS_KEY]: newSettings });
+    await writeSyncedSettings(newSettings);
   } catch (error) {
     console.error("[VolumeHero] Failed to save global settings:", error);
     throw error;
