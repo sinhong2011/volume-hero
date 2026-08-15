@@ -5,7 +5,7 @@
  */
 
 import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
-import { simpleDecrypt, simpleEncrypt } from "./crypto";
+import { decryptSecret, encryptSecret } from "./crypto";
 import {
   type ExportData,
   exportAllSettings,
@@ -39,9 +39,11 @@ interface SyncResult {
 /**
  * Create S3 client instance with decrypted credentials
  */
-function createS3Client(config: S3Config): S3Client {
-  const accessKeyId = simpleDecrypt(config.accessKeyId);
-  const secretAccessKey = simpleDecrypt(config.secretAccessKey);
+async function createS3Client(config: S3Config): Promise<S3Client> {
+  const [accessKeyId, secretAccessKey] = await Promise.all([
+    decryptSecret(config.accessKeyId),
+    decryptSecret(config.secretAccessKey),
+  ]);
 
   // Build endpoint URL
   let endPoint = config.endpoint?.trim();
@@ -82,7 +84,7 @@ export async function testS3Connection(config: S3Config): Promise<SyncResult> {
   }
 
   try {
-    const client = createS3Client(config);
+    const client = await createS3Client(config);
 
     // Try to check if the file exists (HEAD request)
     // 404 is OK - it means we can access the bucket but file doesn't exist yet
@@ -113,7 +115,7 @@ export async function testS3Connection(config: S3Config): Promise<SyncResult> {
  */
 export async function uploadToS3(config: S3Config): Promise<SyncResult> {
   try {
-    const client = createS3Client(config);
+    const client = await createS3Client(config);
     const data = await exportAllSettings();
     const jsonData = JSON.stringify(data, null, 2);
 
@@ -141,7 +143,7 @@ export async function downloadFromS3(
   config: S3Config
 ): Promise<{ success: boolean; data?: ExportData; message: string }> {
   try {
-    const client = createS3Client(config);
+    const client = await createS3Client(config);
 
     const response = await client.getObject(SYNC_FILE_NAME);
     const data = (await response.json()) as ExportData;
@@ -169,7 +171,7 @@ export async function generateUploadPresignedUrl(
   expiresIn = 3600
 ): Promise<{ success: boolean; url?: string; message: string }> {
   try {
-    const client = createS3Client(config);
+    const client = await createS3Client(config);
     const url = await client.getPresignedUrl("PUT", SYNC_FILE_NAME, {
       expirySeconds: expiresIn,
     });
@@ -199,7 +201,7 @@ export async function generateDownloadPresignedUrl(
   expiresIn = 3600
 ): Promise<{ success: boolean; url?: string; message: string }> {
   try {
-    const client = createS3Client(config);
+    const client = await createS3Client(config);
     const url = await client.getPresignedUrl("GET", SYNC_FILE_NAME, {
       expirySeconds: expiresIn,
     });
@@ -374,13 +376,13 @@ export async function performS3Sync(
 /**
  * Encrypt access key
  */
-export function encryptAccessKey(key: string): string {
-  return simpleEncrypt(key);
+export function encryptAccessKey(key: string): Promise<string> {
+  return encryptSecret(key);
 }
 
 /**
  * Get length of encrypted access key
  */
-export function getAccessKeyLength(encryptedKey: string): number {
-  return simpleDecrypt(encryptedKey).length;
+export async function getAccessKeyLength(encryptedKey: string): Promise<number> {
+  return (await decryptSecret(encryptedKey)).length;
 }

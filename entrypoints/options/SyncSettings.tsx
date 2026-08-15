@@ -43,7 +43,7 @@ export default function SyncSettings() {
     setServerUrl(s.cloudSync.webdav.serverUrl);
     setUsername(s.cloudSync.webdav.username);
     if (s.cloudSync.webdav.password) {
-      setPassword("*".repeat(getPasswordLength(s.cloudSync.webdav.password)));
+      setPassword("*".repeat(await getPasswordLength(s.cloudSync.webdav.password)));
     }
 
     // Load S3 config
@@ -51,10 +51,10 @@ export default function SyncSettings() {
     setRegion(s.cloudSync.s3.region);
     setEndpoint(s.cloudSync.s3.endpoint || "");
     if (s.cloudSync.s3.accessKeyId) {
-      setAccessKeyId("*".repeat(getAccessKeyLength(s.cloudSync.s3.accessKeyId)));
+      setAccessKeyId("*".repeat(await getAccessKeyLength(s.cloudSync.s3.accessKeyId)));
     }
     if (s.cloudSync.s3.secretAccessKey) {
-      setSecretAccessKey("*".repeat(getAccessKeyLength(s.cloudSync.s3.secretAccessKey)));
+      setSecretAccessKey("*".repeat(await getAccessKeyLength(s.cloudSync.s3.secretAccessKey)));
     }
   });
 
@@ -80,7 +80,7 @@ export default function SyncSettings() {
         username: username(),
         password: password().startsWith("*")
           ? s.cloudSync.webdav.password
-          : encryptPassword(password()),
+          : await encryptPassword(password()),
       };
       await updateSetting("cloudSync", {
         ...s.cloudSync,
@@ -91,10 +91,10 @@ export default function SyncSettings() {
         ...s.cloudSync.s3,
         accessKeyId: accessKeyId().startsWith("*")
           ? s.cloudSync.s3.accessKeyId
-          : encryptAccessKey(accessKeyId()),
+          : await encryptAccessKey(accessKeyId()),
         secretAccessKey: secretAccessKey().startsWith("*")
           ? s.cloudSync.s3.secretAccessKey
-          : encryptAccessKey(secretAccessKey()),
+          : await encryptAccessKey(secretAccessKey()),
         bucketName: bucketName(),
         region: region(),
         endpoint: endpoint(),

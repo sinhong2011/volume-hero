@@ -3,7 +3,7 @@
  * Supports syncing settings to WebDAV servers (Nextcloud, ownCloud, Box, etc.)
  */
 
-import { simpleDecrypt, simpleEncrypt } from "./crypto";
+import { decryptSecret, encryptSecret } from "./crypto";
 import {
   type ExportData,
   exportAllSettings,
@@ -28,8 +28,8 @@ function buildSyncFileUrl(config: WebDAVConfig): string {
   return `${baseUrl}${SYNC_FILE_NAME}`;
 }
 
-function buildAuthHeader(config: WebDAVConfig): string {
-  const password = simpleDecrypt(config.password);
+async function buildAuthHeader(config: WebDAVConfig): Promise<string> {
+  const password = await decryptSecret(config.password);
   return `Basic ${btoa(`${config.username}:${password}`)}`;
 }
 
@@ -48,7 +48,7 @@ export async function testWebDAVConnection(config: WebDAVConfig): Promise<SyncRe
   try {
     const response = await fetch(config.serverUrl, {
       method: "PROPFIND",
-      headers: { Authorization: buildAuthHeader(config), Depth: "0" },
+      headers: { Authorization: await buildAuthHeader(config), Depth: "0" },
     });
     if (response.ok || response.status === 207)
       return { success: true, message: "Connection successful" };
@@ -68,7 +68,7 @@ export async function uploadToWebDAV(config: WebDAVConfig): Promise<SyncResult> 
     const response = await fetch(buildSyncFileUrl(config), {
       method: "PUT",
       headers: {
-        Authorization: buildAuthHeader(config),
+        Authorization: await buildAuthHeader(config),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data, null, 2),
@@ -95,7 +95,7 @@ export async function downloadFromWebDAV(
   try {
     const response = await fetch(buildSyncFileUrl(config), {
       method: "GET",
-      headers: { Authorization: buildAuthHeader(config) },
+      headers: { Authorization: await buildAuthHeader(config) },
     });
     if (response.status === 404) return { success: false, message: "No remote settings found" };
     if (!response.ok) return { success: false, message: `Download failed: ${response.status}` };
@@ -173,10 +173,10 @@ export async function performWebDAVSync(
   return result;
 }
 
-export function encryptPassword(password: string): string {
-  return simpleEncrypt(password);
+export function encryptPassword(password: string): Promise<string> {
+  return encryptSecret(password);
 }
 
-export function getPasswordLength(encryptedPassword: string): number {
-  return simpleDecrypt(encryptedPassword).length;
+export async function getPasswordLength(encryptedPassword: string): Promise<number> {
+  return (await decryptSecret(encryptedPassword)).length;
 }
