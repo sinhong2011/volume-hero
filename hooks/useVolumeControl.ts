@@ -388,7 +388,9 @@ export function useVolumeControl(): VolumeControlState {
       if (!activeTab?.id) return;
       await browser.tabs.sendMessage(activeTab.id, { type: "APPLY_EQ", eq: settings });
     } catch (error) {
-      console.error("[VolumeHero] Failed to apply EQ to tab:", error);
+      // No receiver on this tab (extension page, restricted URL) is an expected
+      // state, not a failure — matching how media info handles the same case.
+      console.debug("[VolumeHero] No tab to apply EQ to:", error);
     }
   }
 
