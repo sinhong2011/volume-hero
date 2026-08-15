@@ -31,12 +31,40 @@ function applySettingsToElement(element: HTMLMediaElement): void {
   applyVolumeToMedia(element, currentVolume);
 }
 
+/** True only in the page's top-level document. */
+const isTopFrame = window.top === window;
+
+/**
+ * Resolve which site's settings apply to this frame.
+ *
+ * The script runs in every frame, and a sub-frame's own URL is the *player's*
+ * origin (youtube.com inside example.com), not the site the user is actually
+ * on. Per-site settings are keyed by the address-bar domain, so a sub-frame
+ * asks the background, which reads it from `sender.tab.url`. Cross-origin
+ * frames cannot determine this on their own at all.
+ */
+async function resolveDomain(): Promise<string> {
+  if (isTopFrame) return extractDomain(window.location.href);
+  try {
+    const response = await browser.runtime.sendMessage({ type: "GET_FRAME_DOMAIN" });
+    return response?.domain ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_start",
+  // Embedded players (Bilibili Live, YouTube/Twitch embeds) live in frames.
+  // Running only in the top document meant their media was never reachable.
+  allFrames: true,
+  // srcdoc/about:blank frames inherit their parent's origin and are used by
+  // several players; without this they get no content script.
+  matchAboutBlank: true,
 
   async main() {
-    const domain = extractDomain(window.location.href);
+    const domain = await resolveDomain();
     if (!domain) return;
 
     // Check if domain is allowed (respects both blacklist and whitelist)
@@ -116,7 +144,9 @@ function handleMessage(
 
     // Only show the on-page OSD when explicitly requested (keyboard/global
     // shortcuts). Popup-driven changes already show the volume in the popup.
-    if (osdEnabled && message.showOsd === true) {
+    // Restricted to the top frame so a page with several player frames shows
+    // one OSD rather than one per frame.
+    if (osdEnabled && message.showOsd === true && isTopFrame) {
       showVolumeOSD(Math.round(currentVolume * 100), false, osdDuration);
     }
 

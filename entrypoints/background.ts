@@ -146,7 +146,24 @@ export default defineBackground(() => {
   });
 
   // Handle messages from popup
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // A sub-frame asking which site's settings apply to it. Only the browser
+    // knows the tab's top-level URL when the frame is cross-origin, so the
+    // answer has to come from here rather than from the frame itself.
+    if (message.type === "GET_FRAME_DOMAIN") {
+      const tabId = sender.tab?.id;
+      if (tabId !== undefined) rememberFrame(tabId, sender.frameId);
+      sendResponse({ domain: sender.tab?.url ? extractDomain(sender.tab.url) : "" });
+      return false;
+    }
+
+    if (message.type === "GET_TAB_MEDIA") {
+      collectTabMedia(message.tabId)
+        .then((mediaInfo) => sendResponse({ mediaInfo }))
+        .catch(() => sendResponse({ mediaInfo: [] }));
+      return true;
+    }
+
     if (message.type === "GET_ALL_TABS_MEDIA") {
       getAllTabsWithMedia().then(sendResponse);
       return true; // Keep message channel open for async response
@@ -239,6 +256,69 @@ async function updateBadge(tabId: number, volume: number): Promise<void> {
 /** Path of the built content script, relative to the extension root. */
 const CONTENT_SCRIPT_FILE = "/content-scripts/content.js" as const;
 
+// ---------------------------------------------------------------------------
+// Frame tracking
+//
+// The content script runs in every frame, but `tabs.sendMessage` without a
+// frameId delivers to all of them and keeps only the first reply — which is
+// usually the top frame, the one that typically has no media. Sub-frames
+// announce themselves on start-up so media can be gathered from each in turn.
+// ---------------------------------------------------------------------------
+
+const framesByTab = new Map<number, Set<number>>();
+
+function rememberFrame(tabId: number, frameId: number | undefined): void {
+  if (frameId === undefined) return;
+  const frames = framesByTab.get(tabId) ?? new Set<number>();
+  frames.add(frameId);
+  framesByTab.set(tabId, frames);
+}
+
+/**
+ * Frame ids worth querying for a tab: always the top frame, plus any sub-frame
+ * that has announced itself. After a service-worker restart the map is empty
+ * and this is just the top frame, which matches the old single-frame behaviour
+ * until the page is reloaded.
+ */
+function frameIdsFor(tabId: number): number[] {
+  return [...new Set([0, ...(framesByTab.get(tabId) ?? [])])];
+}
+
+/** Gather media from every known frame of a tab. */
+async function collectTabMedia(tabId: number): Promise<MediaInfo[]> {
+  const perFrame = await Promise.all(
+    frameIdsFor(tabId).map(async (frameId) => {
+      try {
+        const response = await browser.tabs.sendMessage(
+          tabId,
+          { type: "GET_MEDIA_INFO" },
+          { frameId }
+        );
+        return (response?.mediaInfo ?? []) as MediaInfo[];
+      } catch {
+        // Frame has no content script, or has gone away.
+        return [];
+      }
+    })
+  );
+  return perFrame.flat();
+}
+
+// Drop tracking for tabs that close or navigate, so the map cannot grow
+// without bound over a long browsing session. Navigation is detected through
+// tabs.onUpdated rather than webNavigation, which would need a permission the
+// extension does not otherwise require.
+browser.tabs.onRemoved.addListener((tabId) => {
+  framesByTab.delete(tabId);
+});
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // A top-level navigation invalidates every previously seen sub-frame id.
+  if (changeInfo.status === "loading" && changeInfo.url) {
+    framesByTab.delete(tabId);
+  }
+});
+
 /**
  * Inject the content script into already-open http/https tabs that don't have
  * it yet (e.g. tabs that were open before the extension was installed or
@@ -257,8 +337,10 @@ async function injectContentScriptIntoExistingTabs(): Promise<void> {
       if (!tab.id || !tab.url || !/^https?:\/\//.test(tab.url)) return;
 
       // Already injected? A successful round-trip means the script is present.
+      // Checked against the top frame specifically, so a page whose sub-frames
+      // are already covered is not skipped while its top document is not.
       try {
-        await browser.tabs.sendMessage(tab.id, { type: "GET_MEDIA_INFO" });
+        await browser.tabs.sendMessage(tab.id, { type: "GET_MEDIA_INFO" }, { frameId: 0 });
         return;
       } catch {
         // Not present yet — fall through to inject.
@@ -266,10 +348,11 @@ async function injectContentScriptIntoExistingTabs(): Promise<void> {
 
       try {
         await browser.scripting.executeScript({
-          target: { tabId: tab.id },
+          // allFrames mirrors the manifest: embedded players live in frames,
+          // and an existing tab should get the same coverage as a fresh load.
+          target: { tabId: tab.id, allFrames: true },
           files: [CONTENT_SCRIPT_FILE],
         });
-        console.log(`[VolumeHero] Injected content script into tab ${tab.id}`);
       } catch (error) {
         // Restricted pages (e.g. the web store) reject injection — expected.
         console.debug(`[VolumeHero] Could not inject into tab ${tab.id}:`, error);
@@ -303,14 +386,14 @@ async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
       }
 
       try {
-        const response = await browser.tabs.sendMessage(tab.id, {
-          type: "GET_MEDIA_INFO",
-        });
-
-        if (!response?.mediaInfo?.length) return null;
+        // Gathered across frames: embedded players (Bilibili Live, YouTube and
+        // Twitch embeds) live in sub-frames, so querying only the top document
+        // would report the tab as having no media at all.
+        const mediaInfo = await collectTabMedia(tab.id);
+        if (!mediaInfo.length) return null;
 
         // Check if any media is playing (not paused)
-        const playingMedia = response.mediaInfo.filter((m: MediaInfo) => !m.paused);
+        const playingMedia = mediaInfo.filter((m: MediaInfo) => !m.paused);
         if (playingMedia.length === 0) return null;
 
         return {
@@ -336,17 +419,30 @@ async function getAllTabsWithMedia(): Promise<TabMediaInfo[]> {
  * Apply volume to a specific tab
  */
 async function applyVolumeToTab(tabId: number, volume: number, showOsd = false): Promise<boolean> {
-  try {
-    await browser.tabs.sendMessage(tabId, {
-      type: "APPLY_VOLUME",
-      volume,
-      showOsd,
-    });
-    return true;
-  } catch (error) {
-    console.error(`[VolumeHero] Failed to apply volume to tab ${tabId}:`, error);
-    return false;
+  // Addressed per frame rather than broadcast: an un-targeted send reaches
+  // every frame but keeps only the first reply, which is normally the top
+  // document. For an embedded player that frame holds no media, so the reply
+  // would report zero elements even though a sub-frame did the work.
+  const results = await Promise.all(
+    frameIdsFor(tabId).map(async (frameId) => {
+      try {
+        const response = await browser.tabs.sendMessage(
+          tabId,
+          { type: "APPLY_VOLUME", volume, showOsd },
+          { frameId }
+        );
+        return (response?.applied ?? 0) as number;
+      } catch {
+        return 0;
+      }
+    })
+  );
+
+  const applied = results.reduce((total, count) => total + count, 0);
+  if (applied === 0) {
+    console.debug(`[VolumeHero] No media to adjust in tab ${tabId}`);
   }
+  return applied > 0;
 }
 
 /**

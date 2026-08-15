@@ -76,8 +76,13 @@ export function useVolumeControl(): VolumeControlState {
       const activeTab = tabs[0];
 
       if (activeTab?.id) {
-        const response = await browser.tabs.sendMessage(activeTab.id, {
-          type: "GET_MEDIA_INFO",
+        // Asked of the background rather than the tab directly: the content
+        // script runs in every frame, and messaging a tab without a frame id
+        // keeps only the first reply — usually the top document, which for an
+        // embedded player has no media. The background merges all frames.
+        const response = await browser.runtime.sendMessage({
+          type: "GET_TAB_MEDIA",
+          tabId: activeTab.id,
         });
         setMediaInfo(response?.mediaInfo ?? []);
       }
@@ -406,17 +411,15 @@ export function useVolumeControl(): VolumeControlState {
       const activeTab = tabs[0];
 
       if (activeTab?.id) {
-        // showOsd: false — the popup already shows the volume, so don't
-        // duplicate it with the on-page OSD overlay (only shortcuts use OSD).
-        await browser.tabs.sendMessage(activeTab.id, {
-          type: "APPLY_VOLUME",
+        // Routed through the background so every frame is addressed; an
+        // embedded player lives in a sub-frame that a plain tab message would
+        // not reliably reach. showOsd stays false because the popup already
+        // shows the volume — only shortcuts use the on-page OSD.
+        await browser.runtime.sendMessage({
+          type: "APPLY_VOLUME_TO_TAB",
+          tabId: activeTab.id,
           volume: volume(),
-          showOsd: false,
         });
-        // Keep the toolbar badge in sync with popup-driven changes.
-        browser.runtime
-          .sendMessage({ type: "UPDATE_BADGE", tabId: activeTab.id, volume: volume() })
-          .catch(() => {});
       }
     } catch (error) {
       console.error("[VolumeHero] Failed to apply volume to tab:", error);
