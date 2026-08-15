@@ -1,10 +1,12 @@
 import { paraglide } from "@inlang/paraglide-vite";
+import solid from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
+import { solidCompat } from "./compat/vite-plugin";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  modules: ["@wxt-dev/module-solid", "@wxt-dev/auto-icons"],
+  modules: ["@wxt-dev/auto-icons"],
   // Configure auto-icons to use the existing logo.png as the source
   autoIcons: {
     baseIconPath: "public/icon/logo.png",
@@ -73,6 +75,8 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [
+      solidCompat(),
+      solid(),
       tailwindcss(),
       paraglide({
         project: "./project.inlang",

@@ -1,6 +1,7 @@
 import { debounce } from "es-toolkit";
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
-import toast from "solid-toast";
+import { createSignal, onCleanup, Show } from "solid-js";
+import { onMount } from "@/compat/solid-js";
+import toast from "@/compat/toast";
 import { useI18n } from "@/utils/i18n/useI18n";
 import { type GlobalSettings, getGlobalSettings, saveGlobalSettings } from "@/utils/storage";
 

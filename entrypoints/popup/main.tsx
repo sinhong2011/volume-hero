@@ -1,5 +1,5 @@
-import { render } from "solid-js/web";
-import { Toaster } from "solid-toast";
+import { render } from "@solidjs/web";
+import { Toaster } from "@/compat/toast";
 
 import "./style.css";
 import App from "./App";

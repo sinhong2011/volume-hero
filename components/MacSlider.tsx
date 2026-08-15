@@ -1,5 +1,5 @@
 import { Slider } from "@ark-ui/solid/slider";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
 interface MacSliderProps {

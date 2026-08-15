@@ -1,4 +1,5 @@
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
+import { onMount } from "@/compat/solid-js";
 import { useI18n } from "@/utils/i18n/useI18n";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,

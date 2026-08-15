@@ -1,6 +1,7 @@
 import { Ban, Globe, Search, Trash2 } from "lucide-solid";
-import { createSignal, For, onMount, Show } from "solid-js";
-import toast from "solid-toast";
+import { createSignal, For, Show } from "solid-js";
+import { onMount } from "@/compat/solid-js";
+import toast from "@/compat/toast";
 import { type Messages, useI18n } from "@/utils/i18n";
 import {
   addToBlacklist,
@@ -167,13 +168,12 @@ export default function DomainManager() {
           class={`macos-button ${showBlacklist() ? "macos-button-primary" : ""}`}
           onClick={() => setShowBlacklist(!showBlacklist())}
         >
-          <Ban class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />{" "}
-          {m.blacklist_title()}
+          <Ban class="h-4 w-4 inline mr-1.5" /> {m.blacklist_title()}
         </button>
         <Show when={selectedDomains().size > 0}>
           <button type="button" class="macos-button macos-button-danger" onClick={handleBulkDelete}>
-            <Trash2 class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />{" "}
-            {m.domains_bulk_delete()} ({selectedDomains().size})
+            <Trash2 class="h-4 w-4 inline mr-1.5" /> {m.domains_bulk_delete()} (
+            {selectedDomains().size})
           </button>
         </Show>
         <Show when={domains().length > 0}>
@@ -188,7 +188,7 @@ export default function DomainManager() {
         <div class="macos-card" style={{ "margin-bottom": "16px" }}>
           <div class="macos-card-item" style={{ display: "block" }}>
             <p class="macos-card-label-title" style={{ "margin-bottom": "8px" }}>
-              <Ban class="h-4 w-4" style={{ display: "inline", "margin-right": "6px" }} />
+              <Ban class="h-4 w-4 inline mr-1.5" />
               {m.blacklist_title()}
             </p>
             <p class="macos-card-label-description" style={{ "margin-bottom": "12px" }}>
@@ -261,13 +261,7 @@ export default function DomainManager() {
           "margin-bottom": "12px",
         }}
       >
-        <Search
-          style={{
-            width: "16px",
-            height: "16px",
-            color: "var(--macos-text-tertiary)",
-          }}
-        />
+        <Search class="h-4 w-4 text-macos-text-tertiary" />
         <input
           type="text"
           placeholder={m.domains_search()}
@@ -357,14 +351,7 @@ export default function DomainManager() {
             color: "var(--macos-text-secondary)",
           }}
         >
-          <Globe
-            style={{
-              width: "48px",
-              height: "48px",
-              margin: "0 auto 16px",
-              opacity: 0.5,
-            }}
-          />
+          <Globe class="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>{m.domains_no_domains()}</p>
         </div>
       </Show>
@@ -397,14 +384,7 @@ export default function DomainManager() {
             color: "var(--macos-text-secondary)",
           }}
         >
-          <Search
-            style={{
-              width: "48px",
-              height: "48px",
-              margin: "0 auto 16px",
-              opacity: 0.5,
-            }}
-          />
+          <Search class="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>No domains match your search</p>
         </div>
       </Show>
@@ -443,13 +423,7 @@ function DomainCard(props: DomainCardProps) {
       >
         <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
           <input type="checkbox" checked={props.selected} onChange={props.onSelect} />
-          <Globe
-            style={{
-              width: "16px",
-              height: "16px",
-              color: "var(--macos-text-secondary)",
-            }}
-          />
+          <Globe class="h-4 w-4 text-macos-text-secondary" />
           <span class="macos-card-label-title">{props.entry.domain}</span>
         </div>
         <button
@@ -459,7 +433,7 @@ function DomainCard(props: DomainCardProps) {
           onClick={props.onDelete}
           title={props.m.delete_text()}
         >
-          <Trash2 style={{ width: "14px", height: "14px" }} />
+          <Trash2 class="h-3.5 w-3.5" />
         </button>
       </div>
 

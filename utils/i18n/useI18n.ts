@@ -1,4 +1,5 @@
-import { type Accessor, createSignal, onMount } from "solid-js";
+import { type Accessor, createSignal } from "solid-js";
+import { onMount } from "@/compat/solid-js";
 import * as m from "@/src/paraglide/messages";
 import {
   type AvailableLanguageTag,

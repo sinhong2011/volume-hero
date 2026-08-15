@@ -1,6 +1,7 @@
 import { Download, Upload } from "lucide-solid";
-import { createSignal, onMount, Show } from "solid-js";
-import toast from "solid-toast";
+import { createSignal, Show } from "solid-js";
+import { onMount } from "@/compat/solid-js";
+import toast from "@/compat/toast";
 import { useI18n } from "@/utils/i18n/useI18n";
 import { encryptAccessKey, getAccessKeyLength } from "@/utils/s3";
 import {
