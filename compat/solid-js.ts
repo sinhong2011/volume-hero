@@ -162,6 +162,17 @@ export const mergeProps: typeof merge = merge;
  */
 export function splitProps<T extends Record<string, unknown>>(
   props: T,
+  keys: readonly (keyof T)[]
+): [Record<string, unknown>, Record<string, unknown>];
+export function splitProps<T extends Record<string, unknown>>(
+  props: T,
+  ...keySets: (readonly (keyof T)[])[]
+): Record<string, unknown>[];
+// The single-key-set form is overloaded to a fixed pair so the common
+// `const [local, rest] = splitProps(props, [...])` destructure is not typed as
+// possibly-undefined under noUncheckedIndexedAccess.
+export function splitProps<T extends Record<string, unknown>>(
+  props: T,
   ...keySets: (readonly (keyof T)[])[]
 ): Record<string, unknown>[] {
   const taken = new Set<PropertyKey>();
