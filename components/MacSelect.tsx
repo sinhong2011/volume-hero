@@ -1,7 +1,7 @@
 import { createListCollection, Select } from "@ark-ui/solid/select";
+import { Portal } from "@solidjs/web";
 import { ChevronDown } from "lucide-solid";
-import { Index } from "solid-js";
-import { Portal } from "solid-js/web";
+import { Index } from "@/compat/solid-js";
 
 interface SelectOption {
   value: string;

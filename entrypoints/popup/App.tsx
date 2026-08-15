@@ -1,6 +1,7 @@
 import { Slider } from "@ark-ui/solid/slider";
 import { Switch } from "@ark-ui/solid/switch";
 import { Tooltip } from "@ark-ui/solid/tooltip";
+import { Portal } from "@solidjs/web";
 import {
   ExternalLink,
   Globe,
@@ -12,8 +13,8 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-solid";
-import { For, onCleanup, onMount, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import { For, onCleanup, Show } from "solid-js";
+import { onMount } from "@/compat/solid-js";
 import { useVolumeControl } from "@/hooks/useVolumeControl";
 import { EQ_PRESETS, type EQPresetName, matchEQPreset } from "@/utils/audio-eq";
 import { cn } from "@/utils/cn";
@@ -385,7 +386,7 @@ function App() {
                       activePreset() === preset && "popup-tab-card-active"
                     )}
                     onClick={() => setEQ({ ...EQ_PRESETS[preset] })}
-                    aria-pressed={activePreset() === preset}
+                    aria-pressed={activePreset() === preset ? "true" : "false"}
                   >
                     {presetLabel(preset)}
                   </button>

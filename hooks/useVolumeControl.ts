@@ -5,8 +5,9 @@
  */
 
 import { debounce } from "es-toolkit";
-import { createSignal, onCleanup, onMount } from "solid-js";
-import toast from "solid-toast";
+import { createSignal, onCleanup } from "solid-js";
+import { onMount } from "@/compat/solid-js";
+import toast from "@/compat/toast";
 import { type EQSettings, FLAT_EQ } from "@/utils/audio-eq";
 import {
   DEFAULT_SETTINGS,

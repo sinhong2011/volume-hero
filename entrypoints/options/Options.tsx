@@ -1,6 +1,7 @@
 import { Cloud, Globe, Info, Keyboard, Palette, Settings, Sliders, Volume2 } from "lucide-solid";
-import { createSignal, For, Match, onMount, Show, Switch } from "solid-js";
-import toast from "solid-toast";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { onMount } from "@/compat/solid-js";
+import toast from "@/compat/toast";
 import { type Messages, SUPPORTED_LOCALES, type SupportedLocale, useI18n } from "@/utils/i18n";
 import {
   type GlobalSettings,

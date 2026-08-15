@@ -1,5 +1,5 @@
 import { Switch } from "@ark-ui/solid/switch";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 interface MacSwitchProps {
   checked?: boolean;
