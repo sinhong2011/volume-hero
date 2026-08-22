@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.2.0](https://github.com/sinhong2011/volume-hero/compare/v1.1.1...v1.2.0) (2026-08-22)
+
+
+### ✨ Features
+
+* **audio:** ship the equalizer and rebuild the gain chain ([4e39dc8](https://github.com/sinhong2011/volume-hero/commit/4e39dc8be9d9262d52201e7a8549a5fca3ff92cc))
+* **background:** inject into existing tabs and sync badge with OSD gating ([5ea2dd7](https://github.com/sinhong2011/volume-hero/commit/5ea2dd7b3bd2c0ccfea0c17a75be4fe9e593ce2f))
+* **content:** run in every frame so embedded players can be controlled ([5c42b8c](https://github.com/sinhong2011/volume-hero/commit/5c42b8cf631414248ea9f93434a74fba76f0fdad))
+* **icon:** redesign extension icon with amber boost mark ([1d5ea97](https://github.com/sinhong2011/volume-hero/commit/1d5ea97432726f37cacafaff8bcae282584a47b1))
+* **security:** seal sync credentials with AES-GCM instead of XOR ([a176525](https://github.com/sinhong2011/volume-hero/commit/a1765256f56bf582b9c62996670a9e4188b0ef3e))
+* **settings:** mirror global preferences through chrome.storage.sync ([34d124c](https://github.com/sinhong2011/volume-hero/commit/34d124c2c279cb0958dcb35fb7062f75a6badd08))
+* **solid:** adopt Solid 2.0 with the Ark UI compatibility layer ([807ef54](https://github.com/sinhong2011/volume-hero/commit/807ef54d3e737cd34deead3d4b0c844c23692a44))
+* **solid:** migrate to Solid 2.0.0-rc.0 behind a compatibility layer ([6b0555f](https://github.com/sinhong2011/volume-hero/commit/6b0555ff1a6aed0f5a493ba53b0061529a4ce308))
+
+
+### 🐛 Bug Fixes
+
+* address multiple correctness and security issues ([9d7b21c](https://github.com/sinhong2011/volume-hero/commit/9d7b21c9e460df5de74cbd324c9eb8f005983fc2))
+* **audio:** stop the limiter clipping at high boost ([72b822a](https://github.com/sinhong2011/volume-hero/commit/72b822a00536bb8ebdcd0ac71c4ad7c72791924a))
+* **background:** keep mute state and badge setting across worker restarts ([e4770bd](https://github.com/sinhong2011/volume-hero/commit/e4770bd214d88838909b7097562ff5269d85b967))
+* **i18n:** generate Paraglide output before typecheck, and finish the v2 move ([2969f95](https://github.com/sinhong2011/volume-hero/commit/2969f95a0602dcbbdf68a465d933f693578c68fc))
+* **popup:** stop logging an error when a tab has no content script ([e60c53b](https://github.com/sinhong2011/volume-hero/commit/e60c53bed56ef26cd813a843dadd5ffb3f29fa15))
+* **sync:** detect S3 404 and 403 by status code instead of message text ([72107ea](https://github.com/sinhong2011/volume-hero/commit/72107eab507137f3203bd8a62f919dc57d0d48c6))
+
+
+### ♻️ Refactoring
+
+* **sync:** rename WebDAV exports and scope SyncResult types ([734feb2](https://github.com/sinhong2011/volume-hero/commit/734feb21c96b9ad0259bf16fb6f0ecef8a3f12af))
+* **ui:** streamline popup/options styling with macOS theme tokens ([bc04073](https://github.com/sinhong2011/volume-hero/commit/bc04073b85da591b6cd74bef141c296f6e2eb181))
+
+
+### ✅ Tests
+
+* **compat:** cover the Solid 1 shims that carry reactivity risk ([deb344c](https://github.com/sinhong2011/volume-hero/commit/deb344c42377b8dbb85548a7527fde8aa7a58561))
+
+
+### 👷 CI/CD
+
+* run the test suite in CI and before push ([30ae377](https://github.com/sinhong2011/volume-hero/commit/30ae3778c8684592650e4e98c2d1c6584eec066f))
+
 ## [1.1.1](https://github.com/sinhong2011/volume-hero/compare/v1.1.0...v1.1.1) (2025-12-22)
 
 
