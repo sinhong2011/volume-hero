@@ -38,7 +38,7 @@
 
 ### 环境要求
 
-- [Bun](https://bun.sh/)（v1.3.14+）或 [Node.js](https://nodejs.org/)（v18+）
+- [Bun](https://bun.sh/)（v1.4.0+）或 [Node.js](https://nodejs.org/)（v18+）
 
 ### 安装
 

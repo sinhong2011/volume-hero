@@ -38,7 +38,7 @@
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) (v1.3.14+) or [Node.js](https://nodejs.org/) (v18+)
+- [Bun](https://bun.sh/) (v1.4.0+) or [Node.js](https://nodejs.org/) (v18+)
 
 ### Installation
 
